@@ -24,7 +24,7 @@ unless you turn on the optional cloud model and escalate a specific reply.
 
 ```sh
 cd ~/Development/magnus-tutor
-uv venv --python 3.12 && uv pip install -e ".[dev]"   # once
+uv sync --extra dev                                   # once (exact versions from uv.lock)
 (cd web && npm install && npm run build)               # once, and after UI changes
 .venv/bin/tutor start        # starts the backend (+ Ollama if needed), opens the web app
 .venv/bin/tutor stop         # stops everything and unloads models
@@ -144,9 +144,10 @@ course by default.
 ### Code sandbox
 
 Runs in a temp folder under a macOS `sandbox-exec` profile (no network, no
-reading your home folder, writes only inside the temp folder) with CPU, file
-size and open-file limits, and a watchdog that kills the whole process tree on
-timeout, memory over 512 MB, or more than 32 processes. Python runs in the
+reading your home folder or /Volumes, writes only inside the temp folder, no
+forking unless a language sets `allow_fork: true`) with CPU, file size and
+open-file limits, and a watchdog that kills the run on timeout or memory over
+512 MB. Python runs in the
 sandbox's own venv, never the tutor's. Code the tutor suggests opens in the
 editor (*Open in editor*) and runs only when you press Run.
 
@@ -229,15 +230,19 @@ marked with a cloud badge, and the header shows *cloud on* while enabled.
 ## Security model
 
 Single user, localhost only. The backend accepts requests only with a
-`127.0.0.1`/`localhost` Host header (blocks DNS rebinding), refuses
-state-changing requests from other web origins or with non-JSON bodies (blocks
-cross-site requests from pages you visit), and sends a strict CSP. Settings
+`127.0.0.1`/`localhost` Host header (blocks DNS rebinding), refuses any request a
+browser marks as cross-site (`Sec-Fetch-Site`), refuses state-changing requests
+from other web origins or with non-JSON bodies, and sends a strict CSP. Settings
 that name programs, hosts or folders (`magnus.command`, `ollama.host`, course
 folders) can only be changed by editing the YAML files. Math from students and
 models is parsed against an allowlist and never `eval`ed. Code runs in the
 sandbox described above (also denied LaunchServices, the clipboard, AppleEvents,
-`open`, `osascript`, `launchctl`, `security`); everything a run starts is
-killed when it ends. Model replies can't load outside images. The optional API
+`open`, `osascript`, `launchctl`, `security`, and forking, so nothing it starts
+can outlive the run). The hidden solver only runs its own reference code when you
+turn that on in Settings. Every PDF (and uploaded HEIC/WebP image, syllabus,
+resume) is parsed in a separate sandboxed worker process with no network, no
+access to your files beyond that one, and time limits. Dependencies are pinned
+in `uv.lock`. Model replies can't load outside images. The optional API
 key lives in the Keychain and is passed to `security` on stdin.
 
 ## Development

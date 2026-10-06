@@ -83,29 +83,21 @@ for cmd in (["/usr/bin/open", "-g", "-j", "-b", "com.apple.systemevents"], ["/us
         assert " rc 0" not in line, line
 
 
-def test_detached_processes_do_not_survive(p):
-    """A double-forked, setsid child escapes the process group; the run marker still gets it."""
+def test_programs_cannot_fork_or_detach(p):
+    """Sandboxed programs can't start child processes at all, so nothing can detach and outlive
+    a run (the run marker kill stays as a second layer)."""
     code = """
-import os, time
-if os.fork() == 0:
-    os.setsid()
-    if os.fork() == 0:
-        print("CHILD", os.getpid(), flush=True)
-        time.sleep(30)
+import os
+try:
+    pid = os.fork()
+    if pid == 0:
         os._exit(0)
-    os._exit(0)
-time.sleep(0.3)
-print("parent done")
+    print("FORKED")
+except OSError as e:
+    print("fork refused", e.errno)
 """
     r = sandbox.run({"main.py": code}, "python", limits=FAST, p=p)
-    import psutil
-
-    pid = int(r.stdout.split("CHILD", 1)[1].split()[0])
-    assert "parent done" in r.stdout
-    gone = not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
-    if not gone:
-        psutil.Process(pid).kill()
-    assert gone, "a detached child outlived its run"
+    assert "FORKED" not in r.stdout and "fork refused" in r.stdout
 
 
 def test_filenames_cannot_inject_shell(p):
