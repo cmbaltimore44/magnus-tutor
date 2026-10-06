@@ -52,6 +52,11 @@ async def patch_settings(request: Request):
     s = st(request)
     save_settings(changes, s.p)
     s.reload_settings()
+    if "alerts" in changes and s.extras.get("timer_bridge"):
+        try:
+            await s.extras["timer_bridge"].set_alerts(changes["alerts"])
+        except Exception:
+            pass  # Magnus not installed: the setting still applies in the web app
     if "cloud" in changes:
         from ..llm.cloud import configure_cloud
 

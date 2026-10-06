@@ -159,7 +159,9 @@ kbd { font: 11px var(--font-mono); padding: 1px 5px; border: 1px solid var(--bor
   display: grid; gap: 10px; animation: rise .16s var(--ease);
 }
 .tp-big { font: 600 34px var(--font-mono); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.tp-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.tp-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tp-actions .btn { justify-content: center; padding: 7px 6px; }
+.timer-pop .btn.wide { white-space: normal; text-align: left; justify-content: flex-start; line-height: 1.35; }
 .timer-banner {
   position: fixed; left: 50%; top: calc(var(--topbar) + 12px); transform: translateX(-50%); z-index: 40;
   display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px;

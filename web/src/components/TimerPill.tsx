@@ -78,7 +78,7 @@ export function TimerPill() {
     if (was.status === 'running' && timer.status === 'ended') {
       const msg = timer.phase === 'focus' ? `${timer.phase_label} done${label ? ` · ${label}` : ''}. Time for a break.` : 'Break over. Ready for the next round?';
       setBanner(msg);
-      if (timer.alert_owner === 'web') {
+      if (timer.alert_owner && timer.alert_owner !== 'terminal') {
         chime();
         if ('Notification' in window && Notification.permission === 'granted') new Notification('Magnus Tutor', { body: msg });
       }

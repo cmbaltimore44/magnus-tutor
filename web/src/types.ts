@@ -75,7 +75,8 @@ export type Timer = {
   ends_at?: number | null;
   phase_label?: string;
   computed_at?: number;
-  alert_owner?: 'terminal' | 'web';
+  alert_owner?: 'terminal' | 'web' | 'both';
+  tui_alive?: boolean;
   available?: boolean;
   error?: string;
 };
