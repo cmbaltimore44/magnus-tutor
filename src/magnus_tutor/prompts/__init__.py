@@ -87,8 +87,11 @@ def _course_override_path(name: str, course, p: Paths) -> Path | None:
     return None
 
 
-def source(name: str, course=None, p: Paths | None = None) -> tuple[str, str]:
-    """(text, where) for a prompt, following the lookup order."""
+def source(name: str, course=None, p: Paths | None = None, overrides: dict | None = None) -> tuple[str, str]:
+    """(text, where) for a prompt, following the lookup order. `overrides` (name → text)
+    wins over everything; the prompt tester uses it for unsaved drafts."""
+    if overrides and name in overrides:
+        return overrides[name], "draft"
     p = p or paths()
     f = _course_override_path(name, course, p)
     if f:
@@ -111,8 +114,8 @@ def used_variables(template: str) -> list[str]:
     return sorted(set(_VAR.findall(template)))
 
 
-def get(name: str, variables: dict[str, str], course=None, p: Paths | None = None) -> str:
-    text, _ = source(name, course, p)
+def get(name: str, variables: dict[str, str], course=None, p: Paths | None = None, overrides: dict | None = None) -> str:
+    text, _ = source(name, course, p, overrides)
     return render(text, variables)
 
 

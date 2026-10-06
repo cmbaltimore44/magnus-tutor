@@ -38,26 +38,27 @@ def system_prompt(
     state_vars: dict[str, str] | None = None,
     code: bool = False,
     p: Paths | None = None,
+    overrides: dict | None = None,
 ) -> str:
     p = p or paths()
     v = base_variables(course, p)
     v["retrieved_context"] = format_sources(passages or [])
     v["mode"] = mode
     v.update(state_vars or {})
-    parts = [prompts.get("persona", v, course, p)]
+    parts = [prompts.get("persona", v, course, p, overrides)]
     if mode in ("office_hours", "code"):
         name = "writing_coach" if course and course.is_writing else "office_hours"
-        parts.append(prompts.get(name, v, course, p))
+        parts.append(prompts.get(name, v, course, p, overrides))
     elif mode == "quiz":
-        parts.append(prompts.get("quiz", v, course, p))
+        parts.append(prompts.get("quiz", v, course, p, overrides))
     else:
-        parts.append(prompts.get("ask", v, course, p))
+        parts.append(prompts.get("ask", v, course, p, overrides))
     if code or mode == "code":
-        parts.append(prompts.get("code_tutor", v, course, p))
+        parts.append(prompts.get("code_tutor", v, course, p, overrides))
     if course:
         parts.append("About the course:\n" + v["course_details"])
     if passages is not None:
         parts.append("Sources from the student's materials (cite by their labels):\n" + v["retrieved_context"])
     if state_vars and mode in ("office_hours", "code"):
-        parts.append(prompts.get("office_hours_state", v, course, p))
+        parts.append(prompts.get("office_hours_state", v, course, p, overrides))
     return "\n\n".join(x for x in parts if x)
