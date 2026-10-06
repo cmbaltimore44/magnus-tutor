@@ -434,3 +434,7 @@ pre.err { color: var(--danger); }
 .viewer-text textarea { flex: 1; min-height: 50vh; font: 13px/1.5 var(--font-mono); }
 .m-edited { color: var(--success); }
 .m-embedded-gaps { color: var(--warning); }
+
+.code-block { position: relative; }
+.code-block .open-editor { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity .15s; background: var(--surface); border-color: var(--border); }
+.code-block:hover .open-editor { opacity: 1; }

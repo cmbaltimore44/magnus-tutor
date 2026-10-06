@@ -27,15 +27,32 @@ function linkCitations(s: string, sources?: Source[]): string {
   return out;
 }
 
-type Props = { text: string; sources?: Source[]; onCite?: (i: number) => void; className?: string };
+type Props = { text: string; sources?: Source[]; onCite?: (i: number) => void; className?: string; codeEditor?: boolean };
 
-function MarkdownImpl({ text, sources, onCite, className }: Props) {
+function MarkdownImpl({ text, sources, onCite, className, codeEditor }: Props) {
   return (
     <div className={`md ${className ?? ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
         components={{
+          pre: ({ children, node }) => {
+            const codeEl: any = (node as any)?.children?.[0];
+            const cls: string = codeEl?.properties?.className?.[0] || '';
+            const lang = cls.replace('language-', '');
+            const text = (codeEl?.children || []).map((c: any) => c.value || '').join('');
+            return (
+              <div className="code-block">
+                <pre>{children}</pre>
+                {codeEditor && text.trim() && (
+                  <button type="button" className="btn small ghost open-editor" title="Load into the Code tab (it won't run until you press Run)"
+                    onClick={() => window.dispatchEvent(new CustomEvent('tutor:open-code', { detail: { code: text, lang } }))}>
+                    Open in editor
+                  </button>
+                )}
+              </div>
+            );
+          },
           a: ({ href, children }) => {
             if (href?.startsWith('#src-')) {
               const i = Number(href.slice(5));

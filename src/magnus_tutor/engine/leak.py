@@ -22,6 +22,10 @@ def _norm(s: str) -> str:
     return s
 
 
+def _code_norm(line: str) -> str:
+    return re.sub(r"\s+", "", line.split("#")[0].split("(*")[0])
+
+
 class LeakChecker:
     def __init__(self, reference: dict | None, problem_text: str = ""):
         self.ref = reference or {}
@@ -33,10 +37,12 @@ class LeakChecker:
         steps = [str(s) for s in self.ref.get("steps") or []]
         self.late_steps = [_norm(s) for s in steps[len(steps) // 2 :] if len(_norm(s)) >= 14]
         self.problem_norm = _norm(problem_text)
+        code = str(self.ref.get("reference_code") or "")
+        self.code_lines = [ln for ln in (_code_norm(x) for x in code.splitlines()) if len(ln) >= 8]
 
     @property
     def active(self) -> bool:
-        return bool(self.answer or self.answer_sympy)
+        return bool(self.answer or self.answer_sympy or self.code_lines)
 
     def check(self, text: str, level: int) -> str | None:
         """A short reason if `text` leaks what level `level` must not reveal."""
@@ -59,6 +65,12 @@ class LeakChecker:
             for s in self.late_steps:
                 if s in t:
                     return "gives a later step of the solution"
+        if self.code_lines:
+            reply = {_code_norm(x) for x in text.splitlines()}
+            shared = sum(1 for ln in self.code_lines if ln in reply)
+            # One matching line is a hint; most of the reference program is the answer.
+            if shared >= max(3, int(len(self.code_lines) * 0.5)):
+                return "pastes most of the reference solution code"
         return None
 
 

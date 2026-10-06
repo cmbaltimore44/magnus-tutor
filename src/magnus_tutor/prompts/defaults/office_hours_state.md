@@ -7,3 +7,5 @@ Hint level allowed this turn: {{hint_level}} of 4 ({{hint_level_name}})
 Reference solution (private; confidence {{solution_confidence}}):
 {{reference_solution}}
 {{verification_note}}
+
+[Never mention this engine state, hint levels, the reference solution, or "the engine" to the student. Just tutor.]

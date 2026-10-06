@@ -93,6 +93,13 @@ export function Workspace({ id }: { id: number }) {
 
   useEffect(() => localStorage.setItem('tutor.tab', tab), [tab]);
 
+  // "Open in editor" on a code block in a reply switches to the Code tab.
+  useEffect(() => {
+    const open = () => setTab('code');
+    window.addEventListener('tutor:open-code', open);
+    return () => window.removeEventListener('tutor:open-code', open);
+  }, []);
+
   const send = async (textArg?: string, action?: string) => {
     const text = (textArg ?? draft).trim();
     const ready = images.filter((i) => i.uploadId);
@@ -379,7 +386,7 @@ function MessageView({ m, onCite, cloud, sessionId, onEscalated }: { m: Message;
   return (
     <div className={`msg assistant ${meta.provider === 'anthropic' ? 'cloud' : ''}`}>
       {meta.provider === 'anthropic' && <div className="cloud-note"><Cloud size={13} /> answered by {meta.model || 'the cloud model'} (this left your Mac)</div>}
-      <Markdown text={m.content} sources={meta.sources} onCite={onCite} />
+      <Markdown text={m.content} sources={meta.sources} onCite={onCite} codeEditor />
       <div className="msg-foot">
         {typeof meta.hint_level === 'number' && <span title="Hint level for this reply">hint {meta.hint_level}</span>}
         {meta.stats?.tokens_per_s && <span title={`first token ${meta.stats.ttft_s}s · ${meta.stats.total_s}s total`}>{meta.stats.model} · {meta.stats.tokens_per_s} tok/s</span>}

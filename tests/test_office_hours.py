@@ -236,3 +236,30 @@ def test_leak_checker_ignores_numbers_from_the_problem():
     assert lc.check("Next, write E (4 pi r^2) = q / epsilon_0 and solve.", 3) is None
     sym = LeakChecker({"final_answer": "λ/(2π ε0 r)", "final_answer_sympy": "lambda/(2*pi*epsilon_0*r)"}, "infinite line charge")
     assert sym.check(r"so $E = \frac{\lambda}{2\pi\varepsilon_0 r}$", 2) is not None
+
+
+def test_leak_checker_catches_pasted_solution_code():
+    ref = {"final_answer": "", "reference_code": "fun sumList [] = 0\n  | sumList (x::xs) = x + sumList xs\nval () = print (Int.toString (sumList [1,2,3]))\n"}
+    lc = LeakChecker(ref, "Write sumList")
+    assert lc.check("What should sumList return for the empty list?", 2) is None
+    pasted = "```sml\nfun sumList [] = 0\n  | sumList (x::xs) = x + sumList xs\nval () = print (Int.toString (sumList [1,2,3]))\n```"
+    assert lc.check(pasted, 2) == "pastes most of the reference solution code"
+    assert lc.check(pasted, 4) is None
+
+
+async def test_code_runs_are_ground_truth(p, fake_models):
+    mm, fp = fake_models
+    course = C.create_course("Programming Systems and Languages", short="PSL", kind=["code"], languages=["sml"], p=p)
+    settings = load_settings(p)
+    t = Tutor(p, store_db(p), mm, lambda: settings)
+    sid = t.create_session(course.slug, "code")
+    await run_turn(t, sid, "Write an SML function sumList : int list -> int.")
+    failing = "[Student's sml code]\n```sml\nfun sumList [] = 1 | sumList (x::xs) = x + sumList xs\n```\n[Run result: sml, exit code 0, 0.02s]\ntest empty: FAIL (expected '0', got '1')\ntest three: FAIL (expected '6', got '7')"
+    await run_turn(t, sid, "Here's my code and the run", code_context=failing)
+    sp = _sys(fp.calls[-1])
+    assert "2 test(s) fail" in sp and "don't patch it" in sp
+    assert fp.calls[-1]["model"] == settings["models"]["coder"]
+    assert "[Run result" in fp.calls[-1]["messages"][-1]["content"]
+    passing = failing.replace("FAIL (expected '0', got '1')", "PASS").replace("FAIL (expected '6', got '7')", "PASS").replace("= 1 |", "= 0 |")
+    await run_turn(t, sid, "fixed it", code_context=passing)
+    assert store.get_session(t.db, sid)["state"]["solved"] is True

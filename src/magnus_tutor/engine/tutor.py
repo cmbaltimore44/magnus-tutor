@@ -152,7 +152,19 @@ class Tutor:
 
         # Check the student's answer against the reference with real math, not the model's opinion.
         verification_note = ""
-        if intent.attempt and not first_turn and reference:
+        if code_context and "[Run result" in code_context and not first_turn:
+            # Real execution is the ground truth for code.
+            state.attempt_shared = True
+            fails = code_context.count(": FAIL")
+            passes = code_context.count(": PASS")
+            if passes and not fails and "killed" not in code_context.split("]")[0]:
+                state.last_check = "correct"
+                state.solved = True
+                verification_note = f"Run result: all {passes} tests pass."
+            elif fails:
+                state.last_check = "incorrect"
+                verification_note = f"Run result: {fails} test(s) fail. Teach how to find the bug (read the failing test, add a print, check the boundary case); don't patch it for them."
+        elif intent.attempt and not first_turn and reference:
             check_text = user_text
             if images:
                 transcribed = await self._transcribe(images[0], TRANSCRIBE_WORK)

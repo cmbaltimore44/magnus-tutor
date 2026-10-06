@@ -50,6 +50,18 @@ export function CodePanel({ sessionId, course, onAskTutor }: { sessionId: number
     return () => obs.disconnect();
   }, []);
   useEffect(() => {
+    const f = (e: Event) => {
+      const { code: c, lang: l } = (e as CustomEvent).detail;
+      if (code.trim() && !confirm('Replace the code in the editor with the tutor’s snippet?')) return;
+      setCode(c);
+      const match = langs.find((x) => x.key === l || x.highlight === l);
+      if (match) setLang(match.key);
+      setResult(null);
+    };
+    window.addEventListener('tutor:open-code', f);
+    return () => window.removeEventListener('tutor:open-code', f);
+  }, [code, langs]);
+  useEffect(() => {
     const t = setTimeout(() => localStorage.setItem(key, JSON.stringify({ lang, code, stdin, tests })), 300);
     return () => clearTimeout(t);
   }, [key, lang, code, stdin, tests]);
