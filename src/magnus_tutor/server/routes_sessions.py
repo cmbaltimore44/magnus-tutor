@@ -163,3 +163,26 @@ async def chat(request: Request):
                 yield f"event: done\ndata: {json.dumps(c.stats)}\n\n"
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@router.get("/problems/{pid}")
+async def get_problem(pid: int, request: Request):
+    s = st(request)
+    pr = store.get_problem(s.db, pid)
+    if not pr:
+        raise HTTPException(404, "no such problem")
+    unlocked = bool(s.db.one(
+        "SELECT 1 FROM sessions WHERE json_extract(state, '$.problem_id') = ? AND (json_extract(state, '$.solution_unlocked') OR json_extract(state, '$.solved'))",
+        (pid,),
+    ))
+    return store.public_problem(pr, unlocked)
+
+
+@router.post("/problems/{pid}/solve")
+async def solve_problem(pid: int, request: Request):
+    """Run the hidden solver on demand (Light preset, or to retry)."""
+    solver = st(request).extras.get("solver")
+    if not solver:
+        raise HTTPException(503, "solver unavailable")
+    solver.start(pid)
+    return {"ok": True}

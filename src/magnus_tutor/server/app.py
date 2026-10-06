@@ -27,6 +27,9 @@ def create_app(state: AppState | None = None, *, manage_processes: bool = True) 
         bootstrap(st.p)
         if manage_processes:
             await asyncio.to_thread(runtime.ensure_ollama, st.settings, st.p)
+        from .services import init_services
+
+        init_services(st)
         watchers = []
         for hook in app.state.startup_hooks:
             res = hook(st)

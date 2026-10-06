@@ -103,10 +103,11 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "output_check": True,
     },
     "solver": {
-        "enabled": True,
-        "thinking_budget": 5000,
-        "self_consistency": 1,
-        # auto: measured policy; idle_only: run only between turns and yield to the tutor
+        "enabled": True,  # Light preset: off (run on demand from the Workspace)
+        "thinking_budget": 2500,  # tokens; ~2 min at the measured ~21 tok/s
+        "self_consistency": 1,  # runs per problem (Full preset: 3)
+        "extra_run_if_unverified": True,  # a second run only when the tools couldn't verify the first
+        # idle_only: the solver yields the moment a tutor turn starts and resumes after it
         "policy": "idle_only",
     },
     "background": {"only_when_plugged_in": True, "paused": False},

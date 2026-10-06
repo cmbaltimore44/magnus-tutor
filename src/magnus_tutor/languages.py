@@ -81,8 +81,10 @@ kubernetes:
   extensions: [.yaml, .yml]
   mode: check
   requires: kubeconform
-  # -schema-location default needs the network once; schemas are cached in {cache}
+  # kubeconform downloads JSON schemas once (cached in {cache}); only check-mode
+  # tools may use allow_network, and code is never run with it.
   check: "kubeconform -strict -summary -cache {cache} {file}"
+  allow_network: true
   highlight: yaml
   hello: |
     apiVersion: v1

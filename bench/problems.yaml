@@ -1,0 +1,272 @@
+# Magnus Tutor benchmark set (draft for review). Used to pick default models per
+# role and to catch regressions when models or prompts change.
+#
+# grader: numeric   answer is a number (rel_tol, default 1%), units for reference
+#         symbolic  answer_sympy is compared symbolically/numerically
+#         set       answer is a comma-separated set of numbers
+#         code      the model writes the function; `driver` is appended; stdout must equal `expected`
+#         k8s       kubeconform must pass, and `require` fields must match the parsed YAML
+#         dockerfile hadolint must report no errors, and every `require` regex must match
+
+# ---------------- Electricity and Magnetism ----------------
+- id: em-point-charge
+  course: em
+  kind: physics
+  grader: numeric
+  text: A point charge q = 3 nC sits at the center of a sphere of radius 0.2 m. What is the magnitude of the electric field at the surface of the sphere, in N/C?
+  answer: 674
+  units: N/C
+- id: em-line-charge
+  course: em
+  kind: physics
+  grader: symbolic
+  text: An infinitely long straight wire carries uniform linear charge density λ. Use Gauss's law to find the magnitude of the electric field a distance r from the wire, in terms of λ, r and ε₀.
+  answer_sympy: lambda/(2*pi*epsilon_0*r)
+- id: em-capacitor
+  course: em
+  kind: physics
+  grader: numeric
+  text: A parallel-plate capacitor has plates of area 0.01 m² separated by 1.0 mm of vacuum. What is its capacitance in picofarads?
+  answer: 88.5
+  units: pF
+- id: em-potential
+  course: em
+  kind: physics
+  grader: numeric
+  text: What is the electric potential (relative to infinity) at a distance of 0.5 m from a point charge of 2.0 μC, in volts?
+  answer: 35950
+  units: V
+- id: em-solid-sphere
+  course: em
+  kind: physics
+  grader: symbolic
+  text: A solid insulating sphere of radius R carries total charge Q distributed uniformly through its volume. Find the magnitude of the electric field at a distance r < R from the center, in terms of Q, r, R and ε₀.
+  answer_sympy: Q*r/(4*pi*epsilon_0*R**3)
+- id: em-wire-field
+  course: em
+  kind: physics
+  grader: numeric
+  text: A long straight wire carries a current of 10 A. What is the magnitude of the magnetic field 5.0 cm from the wire, in tesla?
+  answer: 4.0e-5
+  units: T
+- id: em-solenoid
+  course: em
+  kind: physics
+  grader: numeric
+  text: A long solenoid has 1000 turns per meter and carries a current of 2.0 A. What is the magnetic field inside it, in tesla?
+  answer: 2.513e-3
+  units: T
+- id: em-faraday
+  course: em
+  kind: physics
+  grader: numeric
+  text: A coil of 50 turns, each of area 0.020 m², sits in a uniform magnetic field perpendicular to the coil that increases at 0.50 T/s. What is the magnitude of the induced EMF, in volts?
+  answer: 0.5
+  units: V
+- id: em-cap-energy
+  course: em
+  kind: physics
+  grader: numeric
+  text: How much energy is stored in a 10 μF capacitor charged to 12 V, in joules?
+  answer: 7.2e-4
+  units: J
+
+# ---------------- Introduction to Quantum Physics ----------------
+- id: qm-well-ground
+  course: qm
+  kind: physics
+  grader: symbolic
+  text: A particle of mass m is in a one-dimensional infinite square well of width L. What is its ground-state energy, in terms of m, L and ħ?
+  answer_sympy: pi**2*hbar**2/(2*m*L**2)
+- id: qm-electron-well
+  course: qm
+  kind: physics
+  grader: numeric
+  text: An electron is confined to a one-dimensional infinite square well of width 1.0 nm. What is the energy of its first excited state (n = 2), in electron-volts?
+  answer: 1.504
+  units: eV
+- id: qm-sho
+  course: qm
+  kind: physics
+  grader: symbolic
+  text: What is the energy of the n = 3 state of a quantum harmonic oscillator with angular frequency ω (n = 0 is the ground state)? Give it in terms of ħ and ω.
+  answer_sympy: 7*hbar*omega/2
+- id: qm-normalize
+  course: qm
+  kind: math
+  grader: symbolic
+  text: The wave function ψ(x) = A x (L − x) for 0 ≤ x ≤ L and zero elsewhere. Find the real, positive normalization constant A in terms of L.
+  answer_sympy: sqrt(30/L**5)
+- id: qm-de-broglie
+  course: qm
+  kind: physics
+  grader: numeric
+  text: What is the de Broglie wavelength of an electron with kinetic energy 100 eV (non-relativistic), in nanometers?
+  answer: 0.1226
+  units: nm
+- id: qm-expect-x
+  course: qm
+  kind: physics
+  grader: symbolic
+  text: For the ground state of an infinite square well extending from x = 0 to x = L, what is the expectation value ⟨x⟩?
+  answer_sympy: L/2
+- id: qm-commutator
+  course: qm
+  kind: math
+  grader: symbolic
+  text: Evaluate the commutator [x̂, p̂] in one dimension, where p̂ = −iħ d/dx.
+  answer_sympy: I*hbar
+- id: qm-hydrogen
+  course: qm
+  kind: physics
+  grader: numeric
+  text: What is the energy of the photon emitted when a hydrogen atom's electron drops from n = 3 to n = 2, in eV? (Use 13.6 eV for the ground-state binding energy.)
+  answer: 1.889
+  units: eV
+
+# ---------------- Supporting math ----------------
+- id: math-derivative
+  course: qm
+  kind: math
+  grader: symbolic
+  text: Differentiate f(x) = x² e^(−x) with respect to x.
+  answer_sympy: (2*x - x**2)*exp(-x)
+- id: math-integral
+  course: qm
+  kind: math
+  grader: symbolic
+  text: Evaluate the integral of x e^(−a x) dx from 0 to ∞, for a > 0.
+  answer_sympy: 1/a**2
+- id: math-eigen
+  course: qm
+  kind: math
+  grader: set
+  text: Find the eigenvalues of the matrix [[2, 1], [1, 2]].
+  answer: "1, 3"
+
+# ---------------- Programming Systems and Languages (SML) ----------------
+- id: sml-sum
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Write an SML function sumList : int list -> int that returns the sum of a list of integers, using recursion and pattern matching."
+  driver: |
+    val () = print (Int.toString (sumList [1,2,3,4]) ^ "\n");
+    val () = print (Int.toString (sumList []) ^ "\n");
+  expected: "10\n0"
+- id: sml-reverse
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Write an SML function reverse : 'a list -> 'a list that reverses a list in linear time, without using the built-in rev (use a helper with an accumulator)."
+  driver: |
+    val () = print (String.concatWith "," (map Int.toString (reverse [1,2,3])) ^ "\n");
+    val () = print (Int.toString (length (reverse (List.tabulate (100000, fn i => i)))) ^ "\n");
+  expected: "3,2,1\n100000"
+- id: sml-fib
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Write an SML function fib : int -> int where fib 0 = 0, fib 1 = 1, and fib n = fib (n-1) + fib (n-2). It must compute fib 40 quickly (no exponential recursion)."
+  driver: |
+    val () = print (Int.toString (fib 10) ^ "\n");
+    val () = print (Int.toString (fib 40) ^ "\n");
+  expected: "55\n102334155"
+- id: sml-tree-depth
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Given datatype tree = Leaf | Node of tree * int * tree, write an SML function depth : tree -> int returning the number of Nodes on the longest path from the root (Leaf has depth 0). Include the datatype declaration in your answer."
+  driver: |
+    val t = Node (Node (Leaf, 1, Node (Leaf, 2, Leaf)), 3, Leaf);
+    val () = print (Int.toString (depth t) ^ "\n");
+    val () = print (Int.toString (depth Leaf) ^ "\n");
+  expected: "3\n0"
+- id: sml-count-if
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Write a curried SML function countIf : ('a -> bool) -> 'a list -> int that counts the elements satisfying a predicate. Use foldl."
+  driver: |
+    val () = print (Int.toString (countIf (fn x => x mod 2 = 0) [1,2,3,4,6]) ^ "\n");
+    val () = print (Int.toString (countIf (fn s => size s > 2) ["a","abc","hello"]) ^ "\n");
+  expected: "3\n2"
+- id: sml-lookup
+  course: psl
+  kind: code
+  grader: code
+  language: sml
+  text: "Write an SML function lookup : string * (string * int) list -> int option that returns SOME v for the first pair whose key matches, or NONE."
+  driver: |
+    fun show NONE = "NONE" | show (SOME v) = "SOME " ^ Int.toString v;
+    val () = print (show (lookup ("b", [("a",1),("b",2),("b",3)])) ^ "\n");
+    val () = print (show (lookup ("z", [("a",1)])) ^ "\n");
+  expected: "SOME 2\nNONE"
+
+# ---------------- Cloud Computing with Big Data Applications ----------------
+- id: py-wordcount
+  course: cloud
+  kind: code
+  grader: code
+  language: python
+  text: "Write a Python function word_counts(lines) that takes a list of strings and returns a dict mapping each lowercase word to its count, like the reduce output of a MapReduce word count. Words are separated by whitespace; strip the punctuation characters .,!? from each word."
+  driver: |
+
+    r = word_counts(["Hello world!", "hello, MapReduce world."])
+    print(sorted(r.items()))
+  expected: "[('hello', 2), ('mapreduce', 1), ('world', 2)]"
+- id: py-duration
+  course: cloud
+  kind: code
+  grader: code
+  language: python
+  text: "Write a Python function parse_duration(s) that converts strings like '1h30m', '45s', '2h', '1h2m3s' into a total number of seconds (int)."
+  driver: |
+
+    print([parse_duration(x) for x in ["1h30m", "45s", "2h", "1h2m3s"]])
+  expected: "[5400, 45, 7200, 3723]"
+- id: java-gcd
+  course: cloud
+  kind: code
+  grader: code
+  language: java
+  text: "Write a Java class Main with a static method int gcd(int a, int b) using Euclid's algorithm (no main method needed; one will be added)."
+  driver_java_main: |
+    public static void main(String[] args) { System.out.println(gcd(48, 18)); System.out.println(gcd(17, 5)); }
+  expected: "6\n1"
+- id: docker-flask
+  course: cloud
+  kind: config
+  grader: dockerfile
+  text: "Write a Dockerfile for a Flask app in app.py with dependencies in requirements.txt. Use the python:3.12-slim base image, install dependencies without pip's cache, expose port 5000, and run it with `python app.py`."
+  require: ["(?im)^FROM\\s+python:3\\.12-slim", "(?i)--no-cache-dir", "(?im)^EXPOSE\\s+5000", "(?i)requirements\\.txt", "(?im)^CMD"]
+- id: k8s-deployment
+  course: cloud
+  kind: config
+  grader: k8s
+  text: "Write a Kubernetes Deployment named web with 3 replicas running the image nginx:1.27, container port 80, using the label app: web for the selector and pod template."
+  require:
+    kind: Deployment
+    metadata.name: web
+    spec.replicas: 3
+    spec.selector.matchLabels.app: web
+    spec.template.metadata.labels.app: web
+    spec.template.spec.containers.0.image: nginx:1.27
+    spec.template.spec.containers.0.ports.0.containerPort: 80
+- id: k8s-service
+  course: cloud
+  kind: config
+  grader: k8s
+  text: "Write a Kubernetes Service named web-svc of type ClusterIP that selects pods labeled app: web and forwards port 80 to the pods' port 8080."
+  require:
+    kind: Service
+    metadata.name: web-svc
+    spec.type: ClusterIP
+    spec.selector.app: web
+    spec.ports.0.port: 80
+    spec.ports.0.targetPort: 8080
