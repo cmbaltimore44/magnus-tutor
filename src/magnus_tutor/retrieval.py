@@ -13,6 +13,11 @@ import sqlite3
 
 from .db import DB
 
+# Words that say how to answer, not what about; they only add noise to keyword search.
+STOPWORDS = set("""a an and are as at be briefly but by can could do does explain for from give how i in is it its me my
+of on one or please quick quickly sentence sentences short simple simply tell that the their there these this three two
+what when where which who why will with would you your about like just really very okay ok""".split())
+
 QUERY_INSTRUCT = "Instruct: Given a student's question about a course, retrieve passages from their notes and textbooks that answer it\nQuery: "
 
 
@@ -122,7 +127,7 @@ class Retriever:
         return out
 
     def _fts(self, query: str, course: str | None, n: int) -> list[int]:
-        words = [w for w in re.findall(r"[\w']+", query.lower()) if len(w) > 2][:24]
+        words = [w for w in re.findall(r"[\w']+", query.lower()) if len(w) > 2 and w not in STOPWORDS][:24]
         if not words:
             return []
         match = " OR ".join(f'"{w}"' for w in words)
