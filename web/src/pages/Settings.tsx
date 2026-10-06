@@ -183,6 +183,9 @@ export function Settings() {
           <label>Solver thinking budget <input type="number" min={500} max={8000} step={500} value={settings.solver.thinking_budget} onChange={(e) => patch({ solver: { thinking_budget: Number(e.target.value) } })} /> tokens</label>
           <label>Runs per problem <input type="number" min={1} max={3} value={settings.solver.self_consistency} onChange={(e) => patch({ solver: { self_consistency: Number(e.target.value) } })} /></label>
         </div>
+        <label className="toggle block">
+          <input type="checkbox" checked={!!settings.solver.run_reference_code} onChange={(e) => patch({ solver: { run_reference_code: e.target.checked } })} /> Run the solver's reference code in the sandbox to verify code problems (off by default)
+        </label>
         <p className="muted tiny">The engine enforces these in code, so editing a prompt never fights hidden behavior. Prompts themselves are on the <a href="/prompts">Prompts</a> page.</p>
       </section>
 

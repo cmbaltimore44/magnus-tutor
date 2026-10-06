@@ -107,6 +107,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "thinking_budget": 2500,  # tokens; ~2 min at the measured ~21 tok/s
         "self_consistency": 1,  # runs per problem (Full preset: 3)
         "extra_run_if_unverified": True,  # a second run only when the tools couldn't verify the first
+        # Run the solver's model-written reference program in the sandbox to verify code problems.
+        # Off by default: model-written code never runs unless you turn this on.
+        "run_reference_code": False,
         # idle_only: the solver yields the moment a tutor turn starts and resumes after it
         "policy": "idle_only",
     },

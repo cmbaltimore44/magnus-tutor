@@ -226,11 +226,13 @@ def _has_numeric_or_symbolic_link(passed: list[dict], ref: dict) -> bool:
     return any(c.get("recomputes_final") for c in passed) or any(c["kind"] == "code" for c in passed)
 
 
-def verify(ref: dict, kind: str, p=None) -> dict:
+def verify(ref: dict, kind: str, p=None, run_code: bool = False) -> dict:
+    """run_code: execute the solver's model-written reference program in the sandbox. Off by
+    default (settings solver.run_reference_code); without it code problems rely on agreement."""
     checks = [run_check(c) for c in (ref.get("checks") or [])[:12] if isinstance(c, dict)]
     if kind == "physics":
         checks += physics_checks(ref)
-    if kind == "code":
+    if kind == "code" and run_code:
         checks += code_checks(ref, p)
     passed = [c for c in checks if c["ok"] is True]
     failed = [c for c in checks if c["ok"] is False]

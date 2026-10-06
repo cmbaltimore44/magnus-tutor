@@ -91,14 +91,19 @@ def sandbox_python(p: Paths | None = None, create: bool = True) -> str:
 # --- the sandbox profile ------------------------------------------------------------------------------
 
 
-def _profile(workdir: Path, extra_read: list[str], network: bool = False, extra_write: list[str] | None = None) -> str:
+def _profile(workdir: Path, extra_read: list[str], network: bool = False, extra_write: list[str] | None = None, allow_fork: bool = False) -> str:
     home = str(Path.home())
     reads = "\n".join(f'(allow file-read* (subpath "{x}"))' for x in [str(workdir), *extra_read])
     writes = "".join(f'(allow file-write* (subpath "{x}"))' for x in (extra_write or []))
     net = "" if network else "(deny network*)"
+    # No fork at all: a sandboxed program can't spawn children, so nothing it starts can outlive
+    # the run. (`sh -c` execs a simple command without forking.) A language that genuinely needs
+    # subprocesses can opt in with `allow_fork: true` in languages.yaml.
+    fork = "" if allow_fork else "(deny process-fork)"
     return f"""(version 1)
 (allow default)
 {net}
+{fork}
 (deny file-write*)
 (allow file-write* (subpath "{workdir}"))
 {writes}
@@ -256,8 +261,9 @@ def run(
 def _run_once(files, language, spec, main, stdin, lim, p: Paths, backend: str) -> RunResult:
     mode = spec.get("mode", "run")
     python = sandbox_python(p) if "{python}" in (spec.get("run", "") + str(spec.get("requires", ""))) else ""
-    cache = p.cache / "sandbox"
+    cache = p.cache / "sandbox"  # resolved below: the sandbox matches real paths (/var → /private/var)
     cache.mkdir(parents=True, exist_ok=True)
+    cache = cache.resolve()
     if not L.requirement_ok(spec, python or sandbox_python(p, create=False)):
         return RunResult(language=language, stderr=f"{language}: toolchain not installed ({spec.get('requires')}).", exit_code=-1, mode=mode)
     names = {name: safe_filename(name) for name in files}
@@ -277,7 +283,7 @@ def _run_once(files, language, spec, main, stdin, lim, p: Paths, backend: str) -
             extra_read.append(str(Path.home() / "Library/Caches"))
         # Only trusted config checkers (mode: check) may opt into the network, e.g. kubeconform fetching schemas.
         network = bool(spec.get("allow_network")) and mode == "check"
-        profile = _profile(work, [x for x in extra_read if x], network, [str(cache)] if network else None)
+        profile = _profile(work, [x for x in extra_read if x], network, [str(cache)] if network else None, allow_fork=bool(spec.get("allow_fork")))
         argv = ["sandbox-exec", "-p", profile, "/bin/sh", "-c", cmd]
         marker = uuid.uuid4().hex
         env = {"PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(work), "TMPDIR": str(work), "LANG": "en_US.UTF-8",

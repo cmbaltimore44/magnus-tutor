@@ -70,7 +70,7 @@ async def patch_settings(request: Request):
 # or a server of its choosing.
 EDITABLE = {
     "preset": None, "models": None, "gates": None, "background": None, "alerts": None, "appearance": None, "ingest": None,
-    "solver": {"enabled", "thinking_budget", "self_consistency", "extra_run_if_unverified", "policy"},
+    "solver": {"enabled", "thinking_budget", "self_consistency", "extra_run_if_unverified", "policy", "run_reference_code"},
     "cloud": {"enabled", "model"},
     "ollama": {"keep_alive"},
     "server": {"idle_shutdown_minutes"},

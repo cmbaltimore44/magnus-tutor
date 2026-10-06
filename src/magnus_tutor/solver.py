@@ -172,7 +172,7 @@ class SolverService:
                     self.publish("solver", {"problem_id": pid, "status": "running"})
             if ref is None:
                 continue
-            ver = await asyncio.to_thread(verify, ref, pr["kind"] or "math", self.p)
+            ver = await asyncio.to_thread(verify, ref, pr["kind"] or "math", self.p, bool(cfg.get("run_reference_code", False)))
             runs.append(ref)
             verifications.append(ver)
 

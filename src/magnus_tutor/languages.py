@@ -7,6 +7,7 @@ Each entry:
   check: "hadolint {file}"   how to check a config file (mode: check)
   mode: run | check
   highlight: python          editor syntax mode
+  allow_fork: false          programs may not start subprocesses (set true only if a toolchain needs it)
   hello: |                   tiny program used by `tutor languages check`
   expect: "hello"            output the hello program should print
 
