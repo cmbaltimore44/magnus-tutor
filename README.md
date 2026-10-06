@@ -32,8 +32,7 @@ uv sync --extra dev                                   # once (exact versions fro
 ```
 
 From Magnus: `o` opens the Tutor section, or use the palette (*Tutor: …*), or
-`magnus tutor` / `magnus tutor ask "…" --course em` in a shell. (These need the
-Magnus `tutor-timer` branch merged; see [Magnus integration](#magnus-integration).)
+`magnus tutor` / `magnus tutor ask "…" --course em` in a shell.
 
 The backend only runs when you start it, stops itself after 30 idle minutes
 (an open, visible tab counts as use), and installs no launch agents, login
@@ -216,8 +215,8 @@ courses with hand-computed answers verified in SymPy.
   are logged once, by Magnus. Phase-end alerts: Settings → Focus timer
   (auto: the terminal rings if Magnus is open, otherwise the browser).
 - **Tutor section** (`o` from Home) and palette actions; `magnus tutor`.
-- These Magnus changes are on the **`tutor-timer` branch** of the Magnus repo
-  (not merged; your `main` is untouched). Magnus tests: 72 passing.
+- These Magnus changes are merged into Magnus `main` (no Supabase schema
+  changes; Life Tracker is untouched). Magnus tests: 74 passing.
 
 ## Optional cloud model
 
