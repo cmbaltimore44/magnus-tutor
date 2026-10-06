@@ -19,6 +19,45 @@ from .state import AppState, make_state
 
 WEB_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
 
+# Defenses against the browser being used to reach this localhost server:
+# - Host must be this machine (blocks DNS rebinding: an attacker's page can't read or call the API).
+# - State-changing requests must come from the app itself or from a non-browser client
+#   (Magnus, the CLI: no Origin header), and must be real JSON or form uploads, so a
+#   cross-site "simple" POST from another website is refused.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    ),
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Resource-Policy": "same-origin",
+}
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def request_problem(request: Request, port: int) -> str | None:
+    client = request.client.host if request.client else ""
+    if client not in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return "localhost only"
+    hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}", "testserver"}
+    if os.environ.get("MAGNUS_TUTOR_DEV_ORIGIN"):
+        hosts |= {"127.0.0.1:5173", "localhost:5173"}
+    if request.headers.get("host", "") not in hosts:
+        return "unexpected Host header"
+    if request.method in SAFE_METHODS:
+        return None
+    origin = request.headers.get("origin")
+    if origin is not None and origin.removeprefix("http://") not in hosts:
+        return "cross-origin request refused"
+    ctype = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if ctype not in ("application/json", "multipart/form-data", ""):
+        return "unsupported content type"
+    if ctype == "" and int(request.headers.get("content-length") or 0) > 0:
+        return "unsupported content type"
+    return None
+
 
 def create_app(state: AppState | None = None, *, manage_processes: bool = True) -> FastAPI:
     @contextlib.asynccontextmanager
@@ -63,12 +102,15 @@ def create_app(state: AppState | None = None, *, manage_processes: bool = True) 
 
     @app.middleware("http")
     async def localhost_only(request: Request, call_next):
-        host = request.client.host if request.client else ""
-        if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
-            return JSONResponse({"error": "localhost only"}, status_code=403)
+        problem = request_problem(request, app.state.tutor.settings["server"]["port"])
+        if problem:
+            return JSONResponse({"error": problem}, status_code=403)
         if request.url.path.startswith("/api/") and request.url.path not in ("/api/health", "/api/events"):
             app.state.tutor.touch()
-        return await call_next(request)
+        response = await call_next(request)
+        for k, v in SECURITY_HEADERS.items():
+            response.headers.setdefault(k, v)
+        return response
 
     from . import routes_core, routes_courses, routes_sessions  # noqa: E402
 

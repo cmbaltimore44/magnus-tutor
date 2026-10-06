@@ -134,6 +134,3 @@ def attempt_status(state: GateState) -> str:
         return "Attempt shared; the latest answer matches the reference."
     return "Attempt shared; not yet checked or no final answer stated."
 
-
-def asdict_state(state: GateState) -> dict:
-    return state.to_dict()

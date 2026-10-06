@@ -226,6 +226,11 @@ def test_intent_rules():
     assert classify("now", solution_offer_pending=True).solution_when == "now"
     assert classify("after one more try", solution_offer_pending=True).solution_when == "after"
     assert classify("I tried using Gauss's law but I'm stuck").attempt
+    for no in ["Not now, let me try", "no, not now", "nope", "later"]:
+        assert classify(no, solution_offer_pending=True).solution_when == "after", no
+    assert classify("ok so now I have v = 3t", solution_offer_pending=True).solution_when != "now"
+    assert classify("yes please", solution_offer_pending=True).solution_when == "now"
+    assert classify("Problem 6.12").kind != "new_problem" and classify("Problem 3: find E").kind == "new_problem"
 
 
 def test_leak_checker_ignores_numbers_from_the_problem():

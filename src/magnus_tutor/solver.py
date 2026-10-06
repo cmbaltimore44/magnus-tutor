@@ -261,8 +261,8 @@ def choose(runs: list[dict], vers: list[dict]) -> tuple[dict, str, str]:
         conf = "verified"
     elif vers[best_i]["status"] == "verified" and disagree:
         conf = "agreed" if agree >= 2 else "uncertain"
-    elif agree >= 2 and vers[best_i]["status"] != "failed":
-        conf = "agreed"
+    elif agree >= 2 and not any(v["status"] == "failed" for r, v in zip(runs, vers) if same_answer(r, best)):
+        conf = "agreed"  # agreeing runs only count if none of them failed a check
     else:
         conf = "uncertain"
     return best, conf, agreement

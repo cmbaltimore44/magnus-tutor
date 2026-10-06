@@ -226,12 +226,27 @@ replies you escalate go to Anthropic (`claude-opus-5-5`, with the server-side
 refusal fallback enabled), with the same hint gates and leak check; they're
 marked with a cloud badge, and the header shows *cloud on* while enabled.
 
+## Security model
+
+Single user, localhost only. The backend accepts requests only with a
+`127.0.0.1`/`localhost` Host header (blocks DNS rebinding), refuses
+state-changing requests from other web origins or with non-JSON bodies (blocks
+cross-site requests from pages you visit), and sends a strict CSP. Settings
+that name programs, hosts or folders (`magnus.command`, `ollama.host`, course
+folders) can only be changed by editing the YAML files. Math from students and
+models is parsed against an allowlist and never `eval`ed. Code runs in the
+sandbox described above (also denied LaunchServices, the clipboard, AppleEvents,
+`open`, `osascript`, `launchctl`, `security`); everything a run starts is
+killed when it ends. Model replies can't load outside images. The optional API
+key lives in the Keychain and is passed to `security` on stdin.
+
 ## Development
 
 ```sh
 .venv/bin/pytest -q                       # backend tests (fake model; no GPU)
 MAGNUS_TIMER_BIN=…/magnus/bin/magnus.js .venv/bin/pytest tests/test_timer_bridge.py   # against Magnus's timer
-cd web && npm run dev                      # UI with hot reload (proxy to :8765)
+cd web && npm run dev                      # UI with hot reload (proxy to :8765); start the backend with
+                                           #   MAGNUS_TUTOR_DEV_ORIGIN=1 so it accepts the dev server's origin
 node scripts/build-themes.mjs              # regenerate themes from Magnus's terminal themes
 MAGNUS_TUTOR_HOME=/tmp/x .venv/bin/tutor … # use a throwaway config/data dir
 MAGNUS_TUTOR_NO_MANAGE=1                   # backend doesn't start/stop Ollama (dev)

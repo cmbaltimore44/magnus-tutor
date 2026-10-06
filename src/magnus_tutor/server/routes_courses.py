@@ -67,7 +67,8 @@ async def update_course(slug: str, request: Request):
         raise HTTPException(404, "no such course")
     d = await request.json()
     for k, v in d.items():
-        if k in C.Course.__dataclass_fields__ and k != "slug":
+        # Folders and prompt-override paths are hand-edited in course.yaml only.
+        if k in C.Course.__dataclass_fields__ and k not in ("slug", "folders", "prompt_overrides"):
             setattr(c, k, v)
     C.save_course(c, p)
     return course_json(c)

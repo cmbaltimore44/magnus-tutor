@@ -70,11 +70,13 @@ export async function postStream(path: string, body: unknown, onEvent: (ev: Stre
         if (line.startsWith('data:')) data += line.slice(5).trim();
       }
       if (data) {
+        let parsed: StreamEvent | null = null;
         try {
-          onEvent(JSON.parse(data));
+          parsed = JSON.parse(data);
         } catch {
           /* partial or non-JSON line */
         }
+        if (parsed) onEvent(parsed); // handler errors propagate instead of vanishing
       }
     }
   }

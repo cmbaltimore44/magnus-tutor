@@ -15,7 +15,10 @@ tutor's environment.
 from __future__ import annotations
 
 import os
+import re
 import resource
+import shlex
+import uuid
 import shutil
 import subprocess
 import tempfile
@@ -91,18 +94,31 @@ def sandbox_python(p: Paths | None = None, create: bool = True) -> str:
 def _profile(workdir: Path, extra_read: list[str], network: bool = False, extra_write: list[str] | None = None) -> str:
     home = str(Path.home())
     reads = "\n".join(f'(allow file-read* (subpath "{x}"))' for x in [str(workdir), *extra_read])
+    writes = "".join(f'(allow file-write* (subpath "{x}"))' for x in (extra_write or []))
     net = "" if network else "(deny network*)"
     return f"""(version 1)
 (allow default)
 {net}
 (deny file-write*)
 (allow file-write* (subpath "{workdir}"))
-{"".join(f'(allow file-write* (subpath "{x}"))' for x in (extra_write or []))}
-(allow file-write* (literal "/dev/null") (literal "/dev/stdout") (literal "/dev/stderr") (literal "/dev/tty"))
-(allow file-write* (subpath "/private/var/folders"))
+{writes}
+(allow file-write* (literal "/dev/null") (literal "/dev/stdout") (literal "/dev/stderr") (literal "/dev/tty") (literal "/dev/dtracehelper"))
 (deny file-read* (subpath "{home}"))
 {reads}
+(deny process-exec (literal "/usr/bin/open") (literal "/usr/bin/osascript") (literal "/bin/launchctl") (literal "/usr/bin/pbcopy")
+  (literal "/usr/bin/pbpaste") (literal "/usr/bin/security") (literal "/usr/bin/lsappinfo") (literal "/usr/bin/say") (literal "/usr/sbin/screencapture"))
+(deny mach-lookup (global-name "com.apple.coreservices.launchservicesd") (global-name "com.apple.lsd.mapdb") (global-name "com.apple.lsd.modifydb")
+  (global-name "com.apple.pasteboard.1") (global-name "com.apple.coreservices.appleevents") (global-name "com.apple.windowserver.active")
+  (global-name "com.apple.dock.server") (global-name "com.apple.SecurityServer") (global-name "com.apple.securityd.xpc"))
 """
+
+
+_SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def safe_filename(name: str) -> str | None:
+    base = Path(str(name)).name
+    return base if _SAFE_NAME.match(base) and base == str(name) else None
 
 
 def _limits(cpu_s: int, max_file_mb: int):
@@ -120,13 +136,19 @@ def _limits(cpu_s: int, max_file_mb: int):
     return apply
 
 
-def _watch(proc: subprocess.Popen, result: RunResult, timeout_s: float, memory_mb: int, max_procs: int, done: threading.Event) -> None:
+def _watch(proc: subprocess.Popen, result: RunResult, timeout_s: float, memory_mb: int, max_procs: int, done: threading.Event, marker: str = "") -> None:
     start = time.monotonic()
     try:
         root = psutil.Process(proc.pid)
     except psutil.NoSuchProcess:
         return
     while not done.is_set():
+        if proc.poll() is not None:
+            # The program finished; anything it left behind (even detached) goes now, so a
+            # leftover holding the output pipe can't stall the run until the timeout.
+            if marker:
+                _kill_marked(marker)
+            return
         try:
             tree = [root, *root.children(recursive=True)]
             rss = sum(x.memory_info().rss for x in tree if x.is_running())
@@ -143,8 +165,21 @@ def _watch(proc: subprocess.Popen, result: RunResult, timeout_s: float, memory_m
             result.killed = reason
             result.timed_out = reason == "timeout"
             _kill_tree(proc)
+            if marker:
+                _kill_marked(marker)
             return
         done.wait(0.05)
+
+
+def _kill_marked(marker: str) -> None:
+    """Kill every process carrying this run's marker, including ones that detached
+    from the process group (double fork + setsid)."""
+    for p in psutil.process_iter(["pid"]):
+        try:
+            if p.environ().get("TUTOR_SANDBOX_RUN") == marker:
+                p.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
+            pass
 
 
 def _kill_tree(proc: subprocess.Popen) -> None:
@@ -224,13 +259,16 @@ def _run_once(files, language, spec, main, stdin, lim, p: Paths, backend: str) -
     cache.mkdir(parents=True, exist_ok=True)
     if not L.requirement_ok(spec, python or sandbox_python(p, create=False)):
         return RunResult(language=language, stderr=f"{language}: toolchain not installed ({spec.get('requires')}).", exit_code=-1, mode=mode)
+    names = {name: safe_filename(name) for name in files}
+    if not all(names.values()) or not safe_filename(main):
+        return RunResult(language=language, stderr="File names may only use letters, digits, '.', '_' and '-'.", exit_code=-1, mode=mode)
     with tempfile.TemporaryDirectory(prefix="tutor-run-") as tmp:
         work = Path(tmp).resolve()
         for name, content in files.items():
-            safe = Path(name).name
-            (work / safe).write_text(content)
+            (work / names[name]).write_text(content)
         cmd_t = spec["check" if mode == "check" else "run"]
-        cmd = cmd_t.format(file=Path(main).name, dir=str(work), python=python, stem=Path(main).stem, cache=str(cache))
+        q = shlex.quote
+        cmd = cmd_t.format(file=q(Path(main).name), dir=q(str(work)), python=q(python) if python else "", stem=q(Path(main).stem), cache=q(str(cache)))
         if backend == "docker" and language == "python" and _docker_up():
             return _run_docker(work, Path(main).name, stdin, lim, language)
         extra_read = [str(Path(python).parent.parent) if python else "", str(Path.home() / ".local/share/uv/python"), str(cache)]
@@ -240,23 +278,26 @@ def _run_once(files, language, spec, main, stdin, lim, p: Paths, backend: str) -
         network = bool(spec.get("allow_network")) and mode == "check"
         profile = _profile(work, [x for x in extra_read if x], network, [str(cache)] if network else None)
         argv = ["sandbox-exec", "-p", profile, "/bin/sh", "-c", cmd]
+        marker = uuid.uuid4().hex
         env = {"PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(work), "TMPDIR": str(work), "LANG": "en_US.UTF-8",
-               "PYTHONDONTWRITEBYTECODE": "1", "JAVA_TOOL_OPTIONS": "-Xss8m"}
+               "PYTHONDONTWRITEBYTECODE": "1", "JAVA_TOOL_OPTIONS": f"-Xss8m -Djava.io.tmpdir={work}", "TUTOR_SANDBOX_RUN": marker}
         result = RunResult(language=language, mode=mode)
         started = time.monotonic()
         proc = subprocess.Popen(argv, cwd=work, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
                                 preexec_fn=_limits(lim["cpu_s"], lim["max_file_mb"]))
         done = threading.Event()
-        watcher = threading.Thread(target=_watch, args=(proc, result, lim["timeout_s"], lim["memory_mb"], lim["max_procs"], done), daemon=True)
+        watcher = threading.Thread(target=_watch, args=(proc, result, lim["timeout_s"], lim["memory_mb"], lim["max_procs"], done, marker), daemon=True)
         watcher.start()
         try:
             out, err = proc.communicate(stdin.encode(), timeout=lim["timeout_s"] + 5)
         except subprocess.TimeoutExpired:
             _kill_tree(proc)
+            _kill_marked(marker)  # a detached child may be holding the output pipe open
             out, err = proc.communicate()
             result.killed = result.killed or "timeout"
         done.set()
         watcher.join(1)
+        _kill_marked(marker)  # nothing a run started outlives it
         result.duration_s = round(time.monotonic() - started, 3)
         result.exit_code = proc.returncode
         if proc.returncode in (-24, 152) and not result.killed:  # SIGXCPU

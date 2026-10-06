@@ -23,9 +23,10 @@ _ATTEMPT_PHRASE = re.compile(
     re.I,
 )
 _MATHY = re.compile(r"=|\\frac|\\int|\^|\d\s*[*/+\-]\s*\d|\$|\bdef\b|\bfun\b|\bval\b|```|\breturn\b")
-_NEW_PROBLEM = re.compile(r"^\s*(new|next|another)\s+(problem|question|exercise)\b|^\s*(problem|exercise|question)\s+\d+[a-z]?\s*[:.)]", re.I)
+# "Problem 3:" starts a new problem; "Problem 6.12" (a textbook lookup) must not be cut at the dot.
+_NEW_PROBLEM = re.compile(r"^\s*(new|next|another)\s+(problem|question|exercise)\b|^\s*(problem|exercise|question)\s+\d+[a-z]?\s*[:.)](?!\d)", re.I)
 _SOLUTION_NOW = re.compile(r"\b(now|before|show|yes|yeah|yep|sure|go\s+ahead|please|just\s+show)\b", re.I)
-_SOLUTION_AFTER = re.compile(r"\b(after|one\s+more|try\s+again|let\s+me\s+try|i'?ll\s+try|not\s+yet|wait|no)\b", re.I)
+_SOLUTION_AFTER = re.compile(r"\b(after|one\s+more|try\s+again|let\s+me\s+try|i'?ll\s+try|not\s+(now|yet)|wait|no|nope|later)\b", re.I)
 
 
 @dataclass
@@ -51,9 +52,13 @@ def has_attempt(text: str, has_images: bool = False) -> bool:
 def classify(text: str, *, has_images: bool = False, solution_offer_pending: bool = False) -> Intent:
     t = text.strip()
     if solution_offer_pending:
-        if _SOLUTION_AFTER.search(t) and not re.search(r"\bnow\b", t, re.I):
+        # Negations first: "not now", "no, let me try" must never unlock the solution.
+        if _SOLUTION_AFTER.search(t):
             return Intent("solution_choice", attempt=has_attempt(t, has_images), solution_when="after")
-        if _SOLUTION_NOW.search(t) or _ASK_SOLUTION.search(t):
+        # A short affirmative ("now", "yes please", "show it") or an explicit request unlocks;
+        # longer messages that merely contain "now" ("ok so now I have v = 3t") are attempts.
+        short_yes = len(t.split()) <= 6 and _SOLUTION_NOW.search(t) and not has_attempt(t, has_images)
+        if short_yes or _ASK_SOLUTION.search(t):
             return Intent("solution_choice", solution_when="now")
     if _NEW_PROBLEM.search(t):
         return Intent("new_problem")

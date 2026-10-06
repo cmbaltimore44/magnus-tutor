@@ -7,6 +7,7 @@ because the conversation leaves this Mac.
 from __future__ import annotations
 
 import base64
+import re
 import subprocess
 from typing import AsyncIterator
 
@@ -26,9 +27,13 @@ def get_api_key() -> str | None:
 
 
 def set_api_key(key: str) -> None:
-    r = subprocess.run(["security", "add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", ACCOUNT, "-w", key], capture_output=True, text=True, timeout=5)
-    if r.returncode != 0:
-        raise ProviderError(f"couldn't save the key to the Keychain: {r.stderr.strip()}")
+    # Sent on stdin to `security -i` so the key never appears in a process's argv (visible to ps).
+    if not re.fullmatch(r"sk-ant-[A-Za-z0-9_-]{10,200}", key):
+        raise ProviderError("That doesn't look like an Anthropic API key.")
+    cmd = f"add-generic-password -U -s {KEYCHAIN_SERVICE} -a {ACCOUNT} -w {key}\n"
+    r = subprocess.run(["security", "-i"], input=cmd, capture_output=True, text=True, timeout=10)
+    if r.returncode != 0 or get_api_key() != key:
+        raise ProviderError("couldn't save the key to the Keychain")
 
 
 def delete_api_key() -> None:

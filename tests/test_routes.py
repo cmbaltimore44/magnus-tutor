@@ -80,3 +80,37 @@ def test_wizard_reads_syllabus_and_creates_course(client, p):
     assert client.post("/api/courses/archive-term", json={"term": "Spring 2027"}).json() == {"archived": ["qm2"]}
     assert [x["slug"] for x in client.get("/api/courses").json()] == []
     assert [x["slug"] for x in client.get("/api/courses?archived=true").json()] == ["qm2"]
+
+
+def test_browser_attacks_are_refused(client):
+    # Cross-site "simple" POST from a web page: text/plain body, foreign Origin.
+    r = client.post("/api/shutdown", content="{}", headers={"content-type": "text/plain"})
+    assert r.status_code == 403
+    r = client.post("/api/settings", json={}, headers={"origin": "https://evil.example"})
+    assert r.status_code == 403
+    # DNS rebinding: the attacker's hostname in Host.
+    assert client.get("/api/sessions", headers={"host": "evil.example:8765"}).status_code == 403
+    # The app itself (same origin) and non-browser clients (no Origin) are fine.
+    assert client.patch("/api/settings", json={"alerts": "web"}, headers={"origin": "http://127.0.0.1:8765"}).status_code == 200
+    assert client.get("/api/health").headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in client.get("/api/health").headers["content-security-policy"]
+
+
+def test_dangerous_settings_are_not_editable_over_http(client, p):
+    from magnus_tutor.config import load_settings
+
+    client.patch("/api/settings", json={"magnus": {"command": "/bin/sh -c 'touch /tmp/x'"}, "ollama": {"host": "http://evil:1", "keep_alive": "1m"},
+                                        "server": {"port": 1}, "models": {"tutor": "x; rm -rf /"}})
+    s = load_settings(p)
+    assert s["magnus"]["command"] == "magnus" and s["ollama"]["host"].startswith("http://127.0.0.1") and s["server"]["port"] == 8765
+    assert s["ollama"]["keep_alive"] == "1m" and s["models"]["tutor"] != "x; rm -rf /"
+    client.post("/api/courses", json={"title": "E&M", "short": "E&M"})
+    client.patch("/api/courses/em", json={"folders": {"notes": "/"}, "prompt_overrides": {"persona": "/etc/passwd"}, "instructor": "Prof. X"})
+    c = client.get("/api/courses/em").json()
+    assert c["folders"]["notes"] != "/" and c["prompt_overrides"] == {} and c["instructor"] == "Prof. X"
+
+
+def test_course_paths_cannot_escape(client, tmp_path):
+    for bad in ["../../../tmp/pwn", "/tmp/pwn", "em/../.."]:
+        assert client.put("/api/prompts/persona", json={"text": "x", "course": bad}).status_code == 400
+        assert client.post("/api/prompts/persona/reset", json={"course": bad}).status_code == 400

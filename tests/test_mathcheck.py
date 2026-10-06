@@ -24,3 +24,26 @@ def test_candidates_and_matching():
     assert matches_reference(r"I got $E=\frac{\lambda}{2\pi \epsilon_0 r}$", "", "lambda/(2*pi*epsilon_0*r)") is True
     assert matches_reference(r"I got $E=\frac{\lambda}{4\pi \epsilon_0 r}$", "", "lambda/(2*pi*epsilon_0*r)") is False
     assert matches_reference("no idea", "674 N/C") is None
+
+
+def test_untrusted_math_is_never_evaluated(tmp_path):
+    from magnus_tutor.engine.leak import LeakChecker
+    from magnus_tutor.tools.mathcheck import to_sympy
+    from magnus_tutor.tools.verify import run_check
+
+    marker = tmp_path / "pwned"
+    payloads = [f"__import__('os').system('touch {marker}')", f"'_'+'_imp'+'ort_'+'_(\"os\").system(\"touch {marker}\")'",
+                "().__class__.__base__.__subclasses__()", "Symbol('x').__class__", "lambda: 1", "9**9**9", "2**100000"]
+    for pl in payloads:
+        assert to_sympy(pl) is None
+        assert matches_reference(f"I got ${pl}$", "674 N/C") in (None, False)
+        LeakChecker({"final_answer": "674", "final_answer_sympy": pl}, "").check(f"so $x = {pl}$", 1)
+        run_check({"kind": "limit", "lhs": "x", "rhs": "0", "var": "x", "point": pl})
+    assert not marker.exists()
+
+
+def test_final_answer_only():
+    assert matches_reference("I think it's 3 or 7 or 12 or 20", "12") is None
+    assert matches_reference("I got x = 12 then v = 40", "12") is False
+    assert matches_reference("The force is 1,500 N", "1500 N") is True
+    assert equivalent("F/m", "F/m") is True and equivalent("exp(-x)", "e^(-x)") is True

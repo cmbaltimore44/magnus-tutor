@@ -87,12 +87,15 @@ class Tutor:
             return
         course = load_course(session["course"], self.p) if session["course"] else None
         try:
-            if session["mode"] in ("office_hours", "code"):
-                async for ev in self._office_hours(session, course, text, images, action, code_context, provider):
-                    yield ev
-            else:
-                async for ev in self._ask(session, course, text, images, provider):
-                    yield ev
+            # The whole turn is one foreground block, so a background solver can't slip into
+            # the gaps between its steps (retrieval, transcription, the reply) and swap models.
+            async with self.models.foreground():
+                if session["mode"] in ("office_hours", "code"):
+                    async for ev in self._office_hours(session, course, text, images, action, code_context, provider):
+                        yield ev
+                else:
+                    async for ev in self._ask(session, course, text, images, provider):
+                        yield ev
         except ProviderError as e:
             yield {"type": "error", "message": str(e)}
 
@@ -101,10 +104,11 @@ class Tutor:
         same leak check. The new reply is stored after it and marked as cloud."""
         msgs_all = store.messages(self.db, sid)
         idx = next((i for i, m in enumerate(msgs_all) if m["id"] == message_id and m["role"] == "assistant"), None)
-        if idx is None or idx == 0:
+        uidx = next((j for j in range(idx - 1, -1, -1) if msgs_all[j]["role"] == "user"), None) if idx else None
+        if idx is None or uidx is None:
             yield {"type": "error", "message": "no such reply"}
             return
-        user = msgs_all[idx - 1]
+        user = msgs_all[uidx]
         session = store.get_session(self.db, sid)
         course = load_course(session["course"], self.p) if session["course"] else None
         meta = msgs_all[idx]["meta"]
@@ -122,7 +126,7 @@ class Tutor:
             sysmsg = system_prompt(session["mode"], course, passages=passages, state_vars=state_vars, p=self.p, overrides=self.overrides)
         else:
             sysmsg = system_prompt("ask", course, passages=passages, p=self.p, overrides=self.overrides)
-        history = [{"role": m["role"], "content": m["content"]} for m in msgs_all[: idx - 1] if m["role"] in ("user", "assistant")][-HISTORY_MESSAGES:]
+        history = [{"role": m["role"], "content": m["content"]} for m in msgs_all[:uidx] if m["role"] in ("user", "assistant")][-HISTORY_MESSAGES:]
         msgs = [{"role": "system", "content": sysmsg}, *history, _user_msg(user["content"], user.get("images") or [], self.p)]
         checker = LeakChecker(reference, problem["text"] if problem else "") if self.settings()["gates"].get("output_check", True) and level < 4 and session["mode"] != "ask" else None
         yield {"type": "meta", "hint_level": level, "provider": "anthropic", "sources": passages}
@@ -169,7 +173,7 @@ class Tutor:
         if problem is None or action == "new_problem" or intent.kind == "new_problem":
             problem_text = I._NEW_PROBLEM.sub("", user_text).strip(" :.-") if intent.kind == "new_problem" else user_text
             source = "pasted"
-            looked_up = await self._lookup_exercise(course, problem_text)
+            looked_up = await self._lookup_exercise(course, user_text)
             if looked_up:
                 yield {"type": "status", "message": f"Found {looked_up['label']}"}
                 problem_text = looked_up["text"]

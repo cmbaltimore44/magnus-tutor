@@ -50,14 +50,20 @@ async def get_prompt(name: str, request: Request, course: str | None = None):
 @router.put("/prompts/{name}")
 async def save_prompt(name: str, request: Request):
     body = await request.json()
-    vid = prompts.save(st(request).db, name, body["text"], body.get("course"), body.get("note"), st(request).p)
+    try:
+        vid = prompts.save(st(request).db, name, str(body["text"]), body.get("course"), body.get("note"), st(request).p)
+    except (KeyError, ValueError):
+        raise HTTPException(400, "unknown prompt or course")
     return {"ok": True, "version": vid}
 
 
 @router.post("/prompts/{name}/reset")
 async def reset_prompt(name: str, request: Request):
     body = await request.json() if (await request.body()) else {}
-    prompts.reset(st(request).db, name, body.get("course"), st(request).p)
+    try:
+        prompts.reset(st(request).db, name, body.get("course"), st(request).p)
+    except (KeyError, ValueError):
+        raise HTTPException(400, "unknown prompt or course")
     return {"ok": True}
 
 
@@ -121,6 +127,7 @@ async def test_prompt(request: Request):
     async def gen():
         tmp = Path(tempfile.mkdtemp(prefix="tutor-prompt-test-"))
         db = DB(tmp / "test.db")
+        import shutil
         try:
             settings = s.settings
             t = Tutor(s.p, db, s.models, lambda: settings, overrides=overrides)
@@ -147,6 +154,7 @@ async def test_prompt(request: Request):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         finally:
             db.close()
+            shutil.rmtree(tmp, ignore_errors=True)  # throwaway database
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 

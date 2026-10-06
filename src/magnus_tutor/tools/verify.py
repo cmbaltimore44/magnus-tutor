@@ -66,7 +66,9 @@ def run_check(c: dict) -> dict:
             point = c.get("point", "oo")
             if f is not None and val is not None:
                 f = M._rename(sp.sympify(f))
-                pt = sp.oo if str(point) in ("oo", "inf", "infinity") else sp.sympify(point)
+                pt = sp.oo if str(point) in ("oo", "inf", "infinity") else M.to_sympy(str(point))
+                if pt is None:
+                    raise ValueError("bad limit point")
                 out["ok"] = M.equivalent(sp.limit(f, _sym(var), pt), M._rename(sp.sympify(val)))
         elif kind == "units":
             out["ok"] = units_match(lhs, rhs)

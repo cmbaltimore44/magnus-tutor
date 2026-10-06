@@ -98,9 +98,7 @@ class IngestService:
                 did = self.register(f, slug, kind)
                 if did:
                     queued.append(did)
-        if queued:
-            self.kick()
-        return queued
+        return queued  # callers kick the worker (scan may run in a thread)
 
     def register(self, f: Path, course: str, kind: str) -> int | None:
         try:
@@ -158,23 +156,35 @@ class IngestService:
             if doc:
                 await self._process_safe(doc["id"])
                 continue
-            unembedded = self.db.one("SELECT document_id FROM chunks WHERE embedding IS NULL LIMIT 1")
-            if unembedded:
-                # Resume embeddings an interrupted run left unfinished.
-                try:
-                    await self.embed_missing(unembedded["document_id"])
-                    self.db.update("documents", unembedded["document_id"], status="done", progress=1.0, updated_at=now())
-                    self._publish_doc(unembedded["document_id"])
-                except Preempted:
-                    pass
+            try:
+                if await self._resume_embeddings():
+                    continue
+            except Preempted:
+                continue
+            except Exception as e:  # embedding model down etc.: back off, never kill the loop
+                self._publish_status(f"embeddings paused: {str(e)[:120]}")
+                await asyncio.sleep(60)
                 continue
             job = self.db.one("SELECT * FROM jobs WHERE kind = 'repair' AND status = 'queued' ORDER BY id LIMIT 1")
-            if job and self.cfg()["auto_repair"]:
+            if job and self.cfg()["auto_repair"]:  # _repair_job records its own failures
                 await self._repair_job(job)
                 await asyncio.sleep(5)  # cool down between vision pages
                 continue
             self.wake.clear()
             await self.wake.wait()
+
+    async def _resume_embeddings(self) -> bool:
+        """Finish embeddings an interrupted run left behind. Status is kept as it was,
+        except a document that was mid-ingest becomes done."""
+        row = self.db.one("SELECT c.document_id, d.status FROM chunks c JOIN documents d ON d.id = c.document_id "
+                          "WHERE c.embedding IS NULL AND d.status IN ('done', 'ingesting', 'needs_confirmation') LIMIT 1")
+        if not row:
+            return False
+        await self.embed_missing(row["document_id"])
+        if row["status"] == "ingesting":
+            self.db.update("documents", row["document_id"], status="done", progress=1.0, updated_at=now())
+        self._publish_doc(row["document_id"])
+        return True
 
     async def _process_safe(self, did: int) -> None:
         self.current = did
@@ -281,12 +291,12 @@ class IngestService:
         self.db.update("documents", did, status="done", progress=1.0, error=None, meta=meta, updated_at=now())
         self._publish_doc(did)
 
-    async def _vision(self, png: bytes, instruction: str) -> str:
+    async def _vision(self, png: bytes, instruction: str, foreground: bool = False) -> str:
         import base64
 
         msgs = [{"role": "user", "content": instruction, "images": [base64.b64encode(png).decode()]}]
         out = []
-        async for c in self.models.chat("vision", msgs, background=True, options={"temperature": 0, "num_predict": 3000}):
+        async for c in self.models.chat("vision", msgs, background=not foreground, options={"temperature": 0, "num_predict": 3000}):
             out.append(c.text)
         return "".join(out).strip()
 
@@ -368,10 +378,10 @@ class IngestService:
         self.db.execute("UPDATE pages SET text = ?, method = 'edited' WHERE document_id = ? AND page_index = ?", (text, did, page_index))
         await self.rechunk_section(did, page_index)
 
-    async def rechunk_section(self, did: int, page_index: int) -> None:
+    async def rechunk_section(self, did: int, page_index: int, foreground: bool = False) -> None:
         """Re-chunk and re-embed only the section containing `page_index` (cheap)."""
         doc = self.db.one("SELECT * FROM documents WHERE id = ?", (did,))
-        secs = pdf.sections(pdf.open_pdf(Path(doc["path"]))) if Path(doc["path"]).exists() else []
+        secs = await self._run(pdf.sections_of, Path(doc["path"])) if Path(doc["path"]).exists() else []
         sec = pdf.deepest_section(secs, page_index)
         lo, hi = (sec.start, sec.end - 1) if sec and doc["kind"] == "textbook" else (page_index, page_index)
         old = [r["id"] for r in self.db.all("SELECT id FROM chunks WHERE document_id = ? AND page_index <= ? AND page_end >= ?", (did, hi, lo))]
@@ -386,21 +396,23 @@ class IngestService:
         pages = [pdf.PageInfo(index=r["page_index"], printed=r["printed_page"] or "", text=r["text"] or "", has_text=bool(r["text"]), gaps=False,
                               section=pdf.deepest_section(secs, r["page_index"])) for r in rows]
         chunks = chunking.chunk_textbook(pages) if doc["kind"] == "textbook" else chunking.chunk_notes(pages)
+        max_before = (self.db.one("SELECT MAX(id) AS m FROM chunks") or {}).get("m") or 0
         self.db.executemany(
             "INSERT INTO chunks(document_id, course, section_path, page_index, printed_page, page_end, text, image_ref) VALUES (?,?,?,?,?,?,?,?)",
             [(did, doc["course"], c.section_path, c.page_index, c.printed_page, c.page_end, c.text, f"{did}:{c.page_index}") for c in chunks],
         )
-        new = [r["id"] for r in self.db.all("SELECT id FROM chunks WHERE document_id = ? AND embedding IS NULL", (did,))]
-        self.retriever.add_fts(new)
+        new = [r["id"] for r in self.db.all("SELECT id FROM chunks WHERE document_id = ? AND id > ? ORDER BY id", (did, max_before))]
+        self.retriever.add_fts(new)  # only the rows inserted just now
         todo = self.db.all(f"SELECT id, course, text, section_path FROM chunks WHERE id IN ({','.join('?' * len(new))})", new) if new else []
         for i in range(0, len(todo), 16):
-            await self._gate()
+            if not foreground:
+                await self._gate()
             await self.retriever.embed_chunks(todo[i : i + 16])
 
     async def rechunk_document(self, did: int) -> None:
         doc = self.db.one("SELECT * FROM documents WHERE id = ?", (did,))
         before = doc["status"]
-        secs = pdf.sections(pdf.open_pdf(Path(doc["path"]))) if Path(doc["path"]).exists() else []
+        secs = await self._run(pdf.sections_of, Path(doc["path"])) if Path(doc["path"]).exists() else []
         rows = self.db.all("SELECT * FROM pages WHERE document_id = ? ORDER BY page_index", (did,))
         pages = [pdf.PageInfo(index=r["page_index"], printed=r["printed_page"] or "", text=r["text"] or "", has_text=bool(r["text"]), gaps=r["method"] == "embedded-gaps",
                               section=pdf.deepest_section(secs, r["page_index"])) for r in rows]
@@ -420,16 +432,18 @@ class IngestService:
         self.kick()
         return True
 
-    async def repair_page(self, did: int, page_index: int) -> str:
+    async def repair_page(self, did: int, page_index: int, foreground: bool = False) -> str:
+        """Vision-transcribe one page. foreground=True when a student is waiting on it (a
+        textbook lookup inside a tutor turn): no background gates, no waiting for idle."""
         doc = self.db.one("SELECT * FROM documents WHERE id = ?", (did,))
         sha, png = await self._run(pdf.page_image_hash, Path(doc["path"]), page_index)
         cached = self.db.one("SELECT text FROM transcriptions WHERE sha256 = ? AND model != 'apple-ocr'", (sha,))
-        text = cached["text"] if cached else await self._vision(png, TRANSCRIBE_PAGE)
+        text = cached["text"] if cached else await self._vision(png, TRANSCRIBE_PAGE, foreground=foreground)
         if text:
             if not cached:
                 self.db.execute("INSERT OR REPLACE INTO transcriptions(sha256, text, model, created_at) VALUES (?, ?, ?, ?)", (sha, text, self.models.model_for("vision"), now()))
             self.db.execute("UPDATE pages SET text = ?, method = 'vision' WHERE document_id = ? AND page_index = ?", (text, did, page_index))
-            await self.rechunk_section(did, page_index)
+            await self.rechunk_section(did, page_index, foreground=foreground)
         return text
 
     async def _repair_job(self, job: dict) -> None:
@@ -460,7 +474,7 @@ class IngestService:
         text = ex["text"]
         if read_page and page and page["method"] in ("embedded-gaps", "ocr"):
             # Values and symbols may be missing from the text layer: read this one page properly.
-            full = await self.repair_page(ex["document_id"], ex["page_index"])
+            full = await self.repair_page(ex["document_id"], ex["page_index"], foreground=True)
             found = exercises.find_exercises([pdf.PageInfo(index=ex["page_index"], printed=ex["printed_page"], text=full, has_text=True, gaps=False,
                                                            section=pdf.Section(1, "", 0, 0, chapter=chapter), extra={"plain": "Problems\n" + full})])
             hit = next((e for e in found if e.number == number.lstrip("q")), None)
@@ -486,9 +500,9 @@ class IngestService:
             for f in touched:
                 for slug, kind, folder in self.course_folders():
                     if f.parent == folder:
-                        self.register(f, slug, kind)
+                        await asyncio.to_thread(self.register, f, slug, kind)  # hashing a big PDF takes a while
             if any(ch == Change.deleted for ch, _ in changes):
-                self.remove_missing()
+                await asyncio.to_thread(self.remove_missing)
             self.kick()
 
     def start(self) -> None:
@@ -496,17 +510,19 @@ class IngestService:
         # Work interrupted by a shutdown resumes (chunks already embedded are kept).
         self.db.execute("UPDATE documents SET status = 'queued' WHERE status = 'ingesting'")
         self.db.execute("UPDATE jobs SET status = 'queued' WHERE status = 'running' AND kind = 'repair'")
-        self.remove_missing()
-        self.scan()
+        self.watch_task = loop.create_task(self._startup())
+
+    async def _startup(self) -> None:
+        await asyncio.to_thread(self.remove_missing)
+        await asyncio.to_thread(self.scan)  # hashes PDFs: keep it off the event loop
         self.kick()
-        self.watch_task = loop.create_task(self.watch())
+        await self.watch()
 
     def refresh_watch(self) -> None:
         """A course was added or changed: watch its folders too and pick up what's there."""
         if self.watch_task:
             self.watch_task.cancel()
-        self.watch_task = asyncio.get_event_loop().create_task(self.watch())
-        self.scan()
+        self.watch_task = asyncio.get_event_loop().create_task(self._startup())
 
     def stop(self) -> None:
         for t in (self.task, self.watch_task):

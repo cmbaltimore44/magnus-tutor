@@ -142,7 +142,11 @@ def has_gaps(plain: str) -> bool:
 
 def extract_pages(path: Path, progress=None, markdown: bool = True) -> tuple[list[PageInfo], list[Section], str]:
     """Text for every page. Markdown (headings, joined paragraphs) when possible."""
-    doc = open_pdf(path)
+    with open_pdf(path) as doc:
+        return _extract(doc, path, progress, markdown)
+
+
+def _extract(doc, path: Path, progress, markdown: bool):
     plain = [doc[i].get_text() for i in range(doc.page_count)]
     md = None
     if markdown:
@@ -173,8 +177,11 @@ def extract_pages(path: Path, progress=None, markdown: bool = True) -> tuple[lis
 
 
 def render_png(path: Path, index: int, zoom: float = 1.6, highlight: str | None = None) -> bytes:
-    doc = open_pdf(path)
-    page = doc[index]
+    with open_pdf(path) as doc:
+        return _render(doc[index], zoom, highlight)
+
+
+def _render(page, zoom: float, highlight: str | None) -> bytes:
     if highlight:
         needle = re.sub(r"\s+", " ", highlight).strip()[:80]
         rects = page.search_for(needle) if len(needle) > 12 else []
@@ -200,4 +207,10 @@ def page_image_hash(path: Path, index: int) -> tuple[str, bytes]:
 
 
 def page_count(path: Path) -> int:
-    return open_pdf(path).page_count
+    with open_pdf(path) as doc:
+        return doc.page_count
+
+
+def sections_of(path: Path) -> list[Section]:
+    with open_pdf(path) as doc:
+        return sections(doc)

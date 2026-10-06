@@ -31,6 +31,7 @@ class ModelManager:
         self._idle.set()
         self._preempt = asyncio.Event()
         self._swap_lock = asyncio.Lock()
+        self._bg_lock = asyncio.Lock()  # one background stream at a time (solver, vision ingestion)
         self.cloud = None  # set by enable_cloud()
         self.last_stats: dict = {}
         self.warnings: list[str] = []
@@ -111,12 +112,13 @@ class ModelManager:
             return
         model = model or self.model_for(role)
         if background:
-            await self.wait_idle()
-            await self._prepare(model)
-            async for c in self._preemptible(self.ollama.chat(model, messages, think=think, options=options, fmt=fmt)):
-                if c.done:
-                    self.last_stats = {**c.stats, "model": model, "role": role}
-                yield c
+            async with self._bg_lock:
+                await self.wait_idle()
+                await self._prepare(model)
+                async for c in self._preemptible(self.ollama.chat(model, messages, think=think, options=options, fmt=fmt)):
+                    if c.done:
+                        self.last_stats = {**c.stats, "model": model, "role": role}
+                    yield c
             return
         async with self.foreground():
             await self._prepare(model)

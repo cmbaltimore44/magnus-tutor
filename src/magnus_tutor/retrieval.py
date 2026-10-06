@@ -46,6 +46,12 @@ class Retriever:
 
     def _ensure_vec(self, dim: int) -> None:
         if not self.vec:
+            # NumPy fallback: still record the dimension so vector search runs.
+            if self.dim != dim:
+                if self.dim:
+                    self.db.execute("UPDATE chunks SET embedding = NULL")
+                self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('embedding_dim', ?)", (str(dim),))
+                self.dim = dim
             return
         if self.dim and self.dim != dim:
             # The embedding model changed size: start the vector index over.

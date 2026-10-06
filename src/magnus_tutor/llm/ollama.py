@@ -75,18 +75,23 @@ class OllamaProvider:
                         yield ChatChunk(text=text, thinking=thinking)
         except httpx.ConnectError as e:
             raise ProviderError("Ollama isn't running (start the tutor with `tutor start`)") from e
+        except httpx.HTTPError as e:
+            raise ProviderError(f"lost the connection to Ollama ({type(e).__name__})") from e
 
     async def embed(self, model: str, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        async with self._client(120) as c:
-            r = await c.post(
-                "/api/embed",
-                json={"model": model, "input": texts, "keep_alive": self.keep_alive, "options": {"num_ctx": self.embed_num_ctx}, "truncate": True},
-            )
-            if r.status_code != 200:
-                raise ProviderError(f"ollama embed {r.status_code}: {r.text[:300]}")
-            return r.json()["embeddings"]
+        try:
+            async with self._client(120) as c:
+                r = await c.post(
+                    "/api/embed",
+                    json={"model": model, "input": texts, "keep_alive": self.keep_alive, "options": {"num_ctx": self.embed_num_ctx}, "truncate": True},
+                )
+        except httpx.HTTPError as e:
+            raise ProviderError(f"Ollama embeddings unavailable ({type(e).__name__})") from e
+        if r.status_code != 200:
+            raise ProviderError(f"ollama embed {r.status_code}: {r.text[:300]}")
+        return r.json()["embeddings"]
 
     # --- model management -------------------------------------------------
 

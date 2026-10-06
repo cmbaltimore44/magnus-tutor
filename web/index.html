@@ -6,18 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Magnus Tutor</title>
-    <script>
-      // Apply the theme before first paint (no flash).
-      (function () {
-        try {
-          var p = localStorage.getItem('tutor.palette') || 'heather';
-          var m = localStorage.getItem('tutor.mode') || 'auto';
-          var dark = m === 'dark' || (m === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.dataset.palette = p;
-          if (dark) document.documentElement.dataset.mode = 'dark';
-        } catch (e) {}
-      })();
-    </script>
+    <script src="/theme-boot.js"></script>
   </head>
   <body>
     <div id="root"></div>

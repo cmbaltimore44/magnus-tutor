@@ -71,9 +71,13 @@ async def scan(request: Request):
         body = await request.json()
     except Exception:
         pass
+    import asyncio
+
     s = svc(request)
-    s.remove_missing()
-    return {"queued": s.scan(body.get("course"))}
+    await asyncio.to_thread(s.remove_missing)
+    queued = await asyncio.to_thread(s.scan, body.get("course"))
+    s.kick()
+    return {"queued": queued}
 
 
 @router.post("/library/documents/{did}/reingest")

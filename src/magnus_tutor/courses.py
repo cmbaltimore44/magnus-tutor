@@ -108,7 +108,16 @@ def slugify(text: str) -> str:
     return s[:40] or "course"
 
 
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+
+
+def valid_slug(slug) -> bool:
+    return isinstance(slug, str) and bool(SLUG.match(slug))
+
+
 def load_course(slug: str, p: Paths | None = None) -> Course | None:
+    if not valid_slug(slug):
+        return None
     p = p or paths()
     data = load_yaml(p.courses / slug / "course.yaml")
     if not isinstance(data, dict):

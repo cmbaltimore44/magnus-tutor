@@ -66,3 +66,51 @@ def test_sml_and_java(p):
     assert r.stdout.strip() == "120", r.stderr
     r = sandbox.run({"Main.java": 'public class Main { public static void main(String[] a) { System.out.println(6 * 7); } }'}, "java", p=p)
     assert r.stdout.strip() == "42", r.stderr
+
+
+def test_launchservices_clipboard_and_keychain_are_blocked(p):
+    code = """
+import subprocess
+for cmd in (["/usr/bin/open", "-g", "-j", "-b", "com.apple.systemevents"], ["/usr/bin/pbpaste"], ["/usr/bin/security", "show-keychain-info"], ["/usr/bin/osascript", "-e", "1"]):
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=5)
+        print(cmd[0], "rc", r.returncode)
+    except Exception as e:
+        print(cmd[0], "blocked", type(e).__name__)
+"""
+    r = sandbox.run({"main.py": code}, "python", limits=FAST, p=p)
+    for line in r.stdout.splitlines():
+        assert " rc 0" not in line, line
+
+
+def test_detached_processes_do_not_survive(p):
+    """A double-forked, setsid child escapes the process group; the run marker still gets it."""
+    code = """
+import os, time
+if os.fork() == 0:
+    os.setsid()
+    if os.fork() == 0:
+        print("CHILD", os.getpid(), flush=True)
+        time.sleep(30)
+        os._exit(0)
+    os._exit(0)
+time.sleep(0.3)
+print("parent done")
+"""
+    r = sandbox.run({"main.py": code}, "python", limits=FAST, p=p)
+    import psutil
+
+    pid = int(r.stdout.split("CHILD", 1)[1].split()[0])
+    assert "parent done" in r.stdout
+    gone = not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+    if not gone:
+        psutil.Process(pid).kill()
+    assert gone, "a detached child outlived its run"
+
+
+def test_filenames_cannot_inject_shell(p):
+    r = sandbox.run({"x$(touch /tmp/tutor-pwn).yaml": "a: 1"}, "kubernetes", p=p)
+    assert r.exit_code == -1 and "File names" in r.stderr
+    from pathlib import Path
+
+    assert not Path("/tmp/tutor-pwn").exists()

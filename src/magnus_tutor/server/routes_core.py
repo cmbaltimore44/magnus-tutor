@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import signal
 
 import psutil
@@ -47,8 +48,7 @@ async def get_settings(request: Request):
 
 @router.patch("/settings")
 async def patch_settings(request: Request):
-    changes = await request.json()
-    changes.pop("hardware", None)
+    changes = editable_settings(await request.json())
     s = st(request)
     save_settings(changes, s.p)
     s.reload_settings()
@@ -63,6 +63,38 @@ async def patch_settings(request: Request):
         configure_cloud(s)
     bus.publish("settings", {"changed": list(changes)})
     return await get_settings(request)
+
+
+# What the web app may change. Commands, hosts, ports and paths are only editable in
+# settings.yaml by hand, so nothing reaching the API can point the backend at a program
+# or a server of its choosing.
+EDITABLE = {
+    "preset": None, "models": None, "gates": None, "background": None, "alerts": None, "appearance": None, "ingest": None,
+    "solver": {"enabled", "thinking_budget", "self_consistency", "extra_run_if_unverified", "policy"},
+    "cloud": {"enabled", "model"},
+    "ollama": {"keep_alive"},
+    "server": {"idle_shutdown_minutes"},
+    "cache": {"max_mb"},
+}
+
+
+def editable_settings(changes: dict) -> dict:
+    out = {}
+    for k, v in (changes or {}).items():
+        if k not in EDITABLE:
+            continue
+        allowed = EDITABLE[k]
+        if allowed is None or not isinstance(v, dict):
+            if allowed is None:
+                out[k] = v
+            continue
+        sub = {kk: vv for kk, vv in v.items() if kk in allowed}
+        if sub:
+            out[k] = sub
+    if isinstance(out.get("models"), dict):
+        out["models"] = {r: m for r, m in out["models"].items() if r in ("tutor", "solver", "coder", "vision", "embedding") and isinstance(m, str)
+                         and re.fullmatch(r"[A-Za-z0-9._:/-]{1,80}", m)}
+    return out
 
 
 def _key_present() -> bool:

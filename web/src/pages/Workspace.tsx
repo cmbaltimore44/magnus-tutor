@@ -94,6 +94,9 @@ export function Workspace({ id }: { id: number }) {
 
   useEffect(() => localStorage.setItem('tutor.tab', tab), [tab]);
 
+  // Leaving the page mid-reply stops the generation (so the model isn't left running for nobody).
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   // "Open in editor" on a code block in a reply switches to the Code tab.
   useEffect(() => {
     const open = () => setTab('code');
@@ -382,8 +385,14 @@ function MessageView({ m, onCite, cloud, sessionId, onEscalated }: { m: Message;
   const escalate = async () => {
     setBusy(true);
     try {
-      await postStream(`/sessions/${sessionId}/escalate`, { message_id: m.id }, () => {});
+      let failed: string | null = null;
+      await postStream(`/sessions/${sessionId}/escalate`, { message_id: m.id }, (ev) => {
+        if (ev.type === 'error') failed = ev.message;
+      });
+      if (failed) alert(`Escalation failed: ${failed}`);
       onEscalated();
+    } catch (e: any) {
+      alert(`Escalation failed: ${e.message}`);
     } finally {
       setBusy(false);
     }

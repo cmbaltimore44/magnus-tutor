@@ -79,10 +79,10 @@ def _course_override_path(name: str, course, p: Paths) -> Path | None:
         return f
     custom = (course.prompt_overrides or {}).get(name)
     if custom:
-        cp = Path(custom).expanduser()
-        if not cp.is_absolute():
-            cp = p.courses / course.slug / cp
-        if cp.exists():
+        base = (p.courses / course.slug).resolve()
+        cp = (base / Path(custom).expanduser()).resolve()
+        # Overrides must live inside the course folder and be Markdown.
+        if cp.suffix == ".md" and base in cp.parents and cp.exists():
             return cp
     return None
 
@@ -122,6 +122,7 @@ def get(name: str, variables: dict[str, str], course=None, p: Paths | None = Non
 def save(db: DB, name: str, content: str, course_slug: str | None = None, note: str | None = None, p: Paths | None = None) -> int:
     if name not in NAMES:
         raise KeyError(name)
+    _check_slug(course_slug)
     p = p or paths()
     target = (p.courses / course_slug / "prompts" / f"{name}.md") if course_slug else (p.prompts / f"{name}.md")
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -141,6 +142,9 @@ def _record_baseline(db: DB, name: str, course_slug: str | None, target: Path) -
 
 def reset(db: DB, name: str, course_slug: str | None = None, p: Paths | None = None) -> None:
     """Global: back to the packaged default (recorded as a version). Course: remove the override."""
+    if name not in NAMES:
+        raise KeyError(name)
+    _check_slug(course_slug)
     p = p or paths()
     if course_slug:
         f = p.courses / course_slug / "prompts" / f"{name}.md"
@@ -150,6 +154,13 @@ def reset(db: DB, name: str, course_slug: str | None = None, p: Paths | None = N
             f.unlink()
         return
     save(db, name, default_text(name), None, note="reset to default", p=p)
+
+
+def _check_slug(course_slug: str | None) -> None:
+    from ..courses import valid_slug
+
+    if course_slug is not None and not valid_slug(course_slug):
+        raise ValueError("bad course")
 
 
 def history(db: DB, name: str, course_slug: str | None = None) -> list[dict]:

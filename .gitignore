@@ -10,3 +10,4 @@ web/node_modules/
 web/dist/
 bench/results/raw/
 .env
+web/*.tsbuildinfo

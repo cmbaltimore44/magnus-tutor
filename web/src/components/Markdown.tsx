@@ -53,6 +53,10 @@ function MarkdownImpl({ text, sources, onCite, className, codeEditor }: Props) {
               </div>
             );
           },
+          // Only images served by this app (uploads, page renders). A model reply can't make the
+          // browser fetch an outside URL, which could carry your data away in the query string.
+          img: ({ src, alt }) =>
+            typeof src === 'string' && (src.startsWith('/api/') || src.startsWith('data:image/')) ? <img src={src} alt={alt || ''} /> : <span className="muted">[image: {alt || 'external'}]</span>,
           a: ({ href, children }) => {
             if (href?.startsWith('#src-')) {
               const i = Number(href.slice(5));
