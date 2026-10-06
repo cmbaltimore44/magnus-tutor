@@ -438,3 +438,44 @@ pre.err { color: var(--danger); }
 .code-block { position: relative; }
 .code-block .open-editor { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity .15s; background: var(--surface); border-color: var(--border); }
 .code-block:hover .open-editor { opacity: 1; }
+
+/* prompts */
+.prompts .page, .page.prompts { max-width: 1380px; }
+.prompt-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr) minmax(300px, 0.8fr); gap: 16px; margin-top: 18px; align-items: start; }
+.prompt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; position: sticky; top: calc(var(--topbar) + 14px); }
+.prompt-list li { position: relative; padding: 9px 11px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; }
+.prompt-list li:hover { background: var(--subtle); }
+.prompt-list li.active { background: var(--surface); border-color: var(--border); }
+.pl-name { font: 500 13px var(--font-mono); }
+.where { position: absolute; top: 9px; right: 10px; font-size: 10.5px; color: var(--muted); }
+.where.w-course { color: var(--accent); }
+.where.w-global { color: var(--link); }
+.prompt-editor { display: flex; flex-direction: column; gap: 10px; }
+.editor-bar { display: flex; align-items: center; gap: 8px; }
+.prompt-text { min-height: 360px; font: 14px/1.6 var(--font-mono); padding: 14px; }
+.vars { display: flex; flex-wrap: wrap; gap: 5px; }
+.var { font: 11.5px var(--font-mono); padding: 3px 7px; border-radius: 6px; border: 1px dashed var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+.var.used { border-style: solid; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.prompt-side { position: sticky; top: calc(var(--topbar) + 14px); }
+.side-head { display: flex; gap: 4px; margin-bottom: 8px; }
+.side-head .active { background: var(--subtle); }
+.preview { white-space: pre-wrap; font: 12px/1.55 var(--font-mono); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: 72vh; overflow: auto; margin: 0; }
+.history { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.history li { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; font-size: 13px; }
+.test-out h3 { margin: 16px 0 6px; font-family: var(--font-read); font-weight: 500; }
+.t-student { font-size: 13.5px; background: var(--subtle); border-radius: 9px; padding: 6px 10px; margin: 6px 0 6px 20%; }
+.t-tutor { margin: 6px 0; }
+.t-tutor .md { font-size: 15px; }
+
+/* new course */
+.steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 12px 0 18px; counter-reset: s; }
+.steps li { counter-increment: s; font-size: 13px; color: var(--muted); padding: 4px 12px 4px 4px; border-radius: 99px; border: 1px solid var(--border); }
+.steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--subtle); margin-right: 6px; font-size: 11px; }
+.steps li.on { color: var(--text); border-color: var(--accent); }
+.steps li.on::before { background: var(--accent); color: var(--on-accent); }
+.wizard { display: grid; gap: 12px; max-width: 760px; }
+.wizard label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); text-transform: capitalize; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.drop { display: flex !important; align-items: center; justify-content: center; gap: 10px; padding: 26px; border: 1.5px dashed var(--border); border-radius: var(--radius); cursor: pointer; color: var(--muted); text-transform: none !important; font-size: 14px !important; }
+.drop:hover { border-color: var(--accent); color: var(--text); }
+.folder-list { display: grid; gap: 6px; font-size: 13px; padding-left: 18px; }

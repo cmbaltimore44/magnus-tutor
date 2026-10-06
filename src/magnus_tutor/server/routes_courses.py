@@ -54,6 +54,8 @@ async def create_course(request: Request):
         d["title"], code=d.get("code", ""), short=d.get("short", ""), term=d.get("term", ""), instructor=d.get("instructor", ""),
         kind=d.get("kind") or [], languages=d.get("languages") or [], p=st(request).p, **allowed,
     )
+    if st(request).extras.get("ingest"):
+        st(request).extras["ingest"].refresh_watch()
     return course_json(c)
 
 

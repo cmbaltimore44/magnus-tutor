@@ -491,6 +491,13 @@ class IngestService:
         self.kick()
         self.watch_task = loop.create_task(self.watch())
 
+    def refresh_watch(self) -> None:
+        """A course was added or changed: watch its folders too and pick up what's there."""
+        if self.watch_task:
+            self.watch_task.cancel()
+        self.watch_task = asyncio.get_event_loop().create_task(self.watch())
+        self.scan()
+
     def stop(self) -> None:
         for t in (self.task, self.watch_task):
             if t:
