@@ -114,3 +114,16 @@ def test_course_paths_cannot_escape(client, tmp_path):
     for bad in ["../../../tmp/pwn", "/tmp/pwn", "em/../.."]:
         assert client.put("/api/prompts/persona", json={"text": "x", "course": bad}).status_code == 400
         assert client.post("/api/prompts/persona/reset", json={"course": bad}).status_code == 400
+
+
+def test_bad_setting_types_are_ignored(client, p):
+    from magnus_tutor.config import load_settings
+
+    r = client.patch("/api/settings", json={"models": "garbage", "gates": {"attempt_gate": "yes"}, "alerts": 5})
+    assert r.status_code == 200
+    s = load_settings(p)
+    assert isinstance(s["models"], dict) and s["gates"]["attempt_gate"] is True and s["alerts"] == "auto"
+    assert client.post("/api/prompts/versions/999/restore").status_code == 404
+    assert client.post("/api/profile/resume").status_code in (400, 404)
+    client.put("/api/profile", json={"resume": "/etc/hosts"})
+    assert client.post("/api/profile/resume").status_code == 400

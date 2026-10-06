@@ -180,7 +180,7 @@ class IngestService:
                           "WHERE c.embedding IS NULL AND d.status IN ('done', 'ingesting', 'needs_confirmation') LIMIT 1")
         if not row:
             return False
-        await self.embed_missing(row["document_id"])
+        await self.embed_missing(row["document_id"], status=None)
         if row["status"] == "ingesting":
             self.db.update("documents", row["document_id"], status="done", progress=1.0, updated_at=now())
         self._publish_doc(row["document_id"])
@@ -344,13 +344,16 @@ class IngestService:
                 self.retriever.store_embedding(r["id"], r["course"], blob)
         await self.embed_missing(did)
 
-    async def embed_missing(self, did: int, batch: int = 16) -> None:
+    async def embed_missing(self, did: int, batch: int = 16, status: str | None = "ingesting") -> None:
+        """Embed chunks that have no vector yet. status=None leaves the document's status alone
+        (resuming in the background must not turn a finished document back into 'ingesting')."""
         todo = self.db.all("SELECT id, course, text, section_path FROM chunks WHERE document_id = ? AND embedding IS NULL ORDER BY id", (did,))
         total = len(todo)
         for i in range(0, total, batch):
             await self._gate()
             await self.retriever.embed_chunks(todo[i : i + batch])
-            self._progress(did, 0.7 + 0.3 * min(1.0, (i + batch) / max(1, total)))
+            if status is not None:
+                self._progress(did, 0.7 + 0.3 * min(1.0, (i + batch) / max(1, total)), status)
 
     def _save_exercises(self, did: int, course: str, pages: list[pdf.PageInfo]) -> None:
         self.db.execute("DELETE FROM exercises WHERE document_id = ?", (did,))
@@ -374,9 +377,10 @@ class IngestService:
         self.kick()
 
     async def fix_page(self, did: int, page_index: int, text: str) -> None:
-        """The student corrected a transcription: keep it, re-chunk that page's section."""
+        """The student corrected a transcription: keep it, re-chunk that page's section (they're
+        waiting on it, so no background gates)."""
         self.db.execute("UPDATE pages SET text = ?, method = 'edited' WHERE document_id = ? AND page_index = ?", (text, did, page_index))
-        await self.rechunk_section(did, page_index)
+        await self.rechunk_section(did, page_index, foreground=True)
 
     async def rechunk_section(self, did: int, page_index: int, foreground: bool = False) -> None:
         """Re-chunk and re-embed only the section containing `page_index` (cheap)."""

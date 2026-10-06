@@ -96,10 +96,13 @@ class OllamaProvider:
     # --- model management -------------------------------------------------
 
     async def list_models(self) -> list[dict]:
-        async with self._client(10) as c:
-            r = await c.get("/api/tags")
-            r.raise_for_status()
-            return [{"name": m["name"], "size": m.get("size", 0), "details": m.get("details", {})} for m in r.json().get("models", [])]
+        try:
+            async with self._client(10) as c:
+                r = await c.get("/api/tags")
+                r.raise_for_status()
+                return [{"name": m["name"], "size": m.get("size", 0), "details": m.get("details", {})} for m in r.json().get("models", [])]
+        except httpx.HTTPError as e:
+            raise ProviderError("Ollama isn't running (start the tutor with `tutor start`)") from e
 
     async def loaded(self) -> list[dict]:
         try:

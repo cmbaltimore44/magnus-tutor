@@ -95,7 +95,17 @@ def ureg():
     return _UREG
 
 
+_UNITS_OK = re.compile(r"^[A-Za-z_ ]+(?:\s*(?:\*\*|\^|\*|/)\s*(?:[A-Za-z_]+|-?[0-9]{1,2}(?:\.[0-9])?)|\s+[A-Za-z_]+)*$")
+
+
+def units_ok(u: str) -> bool:
+    """pint evaluates its input: only plain unit expressions (names, * / and small powers) go in."""
+    return isinstance(u, str) and len(u) <= 60 and bool(_UNITS_OK.match(u.strip()))
+
+
 def units_match(a: str, b: str) -> bool | None:
+    if not (units_ok(a) and units_ok(b)):
+        return None
     try:
         ua, ub = ureg().parse_expression(a), ureg().parse_expression(b)
         return ua.dimensionality == ub.dimensionality
@@ -116,7 +126,7 @@ def dimension_of(expr_text: str, symbol_units: dict[str, str]):
         subs = {}
         for s in e.free_symbols:
             unit = units.get(s.name)
-            if unit is None:
+            if unit is None or (unit not in ("1", "dimensionless", "") and not units_ok(unit)):
                 return None
             subs[s] = u.parse_expression(unit) if unit not in ("1", "dimensionless", "") else 1
         # Evaluate the expression tree with pint quantities.
@@ -158,7 +168,7 @@ def physics_checks(ref: dict) -> list[dict]:
     target_units = (ref.get("units") or "").strip()
     expr = (ref.get("final_answer_sympy") or "").strip()
     sym_units = ref.get("symbol_units") or {}
-    if target_units and expr and sym_units:
+    if target_units and expr and sym_units and units_ok(target_units):
         dim = dimension_of(expr, sym_units)
         try:
             want = ureg().parse_expression(target_units).dimensionality

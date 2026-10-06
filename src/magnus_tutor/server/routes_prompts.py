@@ -77,7 +77,10 @@ async def get_version(vid: int, request: Request):
 
 @router.post("/prompts/versions/{vid}/restore")
 async def restore(vid: int, request: Request):
-    return {"version": prompts.restore(st(request).db, vid, st(request).p)}
+    try:
+        return {"version": prompts.restore(st(request).db, vid, st(request).p)}
+    except (KeyError, ValueError):
+        raise HTTPException(404, "no such version")
 
 
 SAMPLE_PROBLEM = "A point charge q = 3 nC sits at the center of a sphere of radius 0.2 m. What is the electric field magnitude at the surface?"

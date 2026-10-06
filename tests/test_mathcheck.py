@@ -47,3 +47,29 @@ def test_final_answer_only():
     assert matches_reference("I got x = 12 then v = 40", "12") is False
     assert matches_reference("The force is 1,500 N", "1500 N") is True
     assert equivalent("F/m", "F/m") is True and equivalent("exp(-x)", "e^(-x)") is True
+
+
+def test_overflow_and_huge_powers_are_rejected_fast():
+    import time
+
+    from magnus_tutor.tools.verify import units_match
+
+    for pl in ["9^(99999999+1)", "9**(64*64*64*64*64)", "10^(10*10*10*10*10*10*10*10)", "(((9^64)^64)^64)^64", "1e999",
+               r"$(10^{9})!$", r"$9^{999999999}$", r"$2^{2^{2^{2^{2^{2}}}}}$"]:
+        t = time.time()
+        assert matches_reference(f"I got E = {pl} N/C", "674 N/C") in (None, False), pl
+        assert time.time() - t < 2, pl
+    t = time.time()
+    assert units_match("9**9**9", "m") is None and units_match("10**(10**10) m", "m") is None
+    assert units_match("newton / coulomb", "volt / meter") is True
+    assert time.time() - t < 2
+    assert matches_reference("$x = 12$ or $x = 7$", "7") is None
+
+
+def test_parser_handles_everyday_math():
+    for a, b in [("x(y+1)", "x*y+x"), ("log(x, 2)", "log(x)/log(2)"), ("cbrt(x)", "x**(1/3)"), ("hbar*omega", "omega*hbar"),
+                 ("arcsin(x)", "asin(x)"), ("exp(-x^2/2)", "exp(-x**2/2)"), ("2x", "2*x"), ("10^-3", "0.001")]:
+        assert equivalent(a, b) is True, a
+    from magnus_tutor.tools.mathcheck import to_sympy
+
+    assert to_sympy("foo(x)") is None  # unknown function: can't tell, never a wrong product of letters

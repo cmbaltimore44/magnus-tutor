@@ -26,12 +26,14 @@ async def models(request: Request):
     try:
         installed = await s.models.ollama.list_models()
     except Exception:
-        installed = []
+        installed = []  # Ollama down: the page still shows roles
     return {"installed": installed, "roles": s.settings["models"], "loaded": await s.models.ollama.loaded()}
 
 
-@router.get("/models/size")
-async def model_size(name: str):
+@router.post("/models/size")
+async def model_size(request: Request):
+    """POST, not GET: it makes an outbound request, so a cross-site <img> must not trigger it."""
+    name = str((await request.json()).get("name", ""))[:100]
     return {"name": name, "size": await asyncio.to_thread(download_size, name)}
 
 
@@ -98,9 +100,13 @@ async def resume_to_profile(request: Request):
     path = prof.get("resume") or str(s.p.config / "resume.pdf")
     from pathlib import Path
 
-    f = Path(str(path)).expanduser()
+    f = Path(str(path)).expanduser().resolve()
+    home = Path.home().resolve()
+    # Only a PDF in your home folder (not a hidden folder) can be read as a resume.
+    if f.suffix.lower() != ".pdf" or home not in f.parents or any(part.startswith(".") for part in f.relative_to(home).parts[:-1] if part != ".config"):
+        raise HTTPException(400, "The resume must be a PDF in your home folder, e.g. ~/.config/magnus-tutor/resume.pdf.")
     if not f.exists():
-        raise HTTPException(404, f"No resume found at {f}. Put resume.pdf in {s.p.config}.")
+        raise HTTPException(404, f"No resume found. Put resume.pdf in {s.p.config}.")
     import fitz
 
     text = "\n".join(page.get_text() for page in fitz.open(f))[:12000]

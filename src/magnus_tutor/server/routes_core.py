@@ -12,7 +12,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from .. import hardware
-from ..config import save_settings
+from ..config import DEFAULT_SETTINGS, save_settings
 from ..hardware import GB
 from .events import bus, sse
 
@@ -78,6 +78,22 @@ EDITABLE = {
 }
 
 
+def _typed(changes: dict, defaults: dict) -> dict:
+    """Keep only values whose type matches the default (so a bad PATCH can't break the backend)."""
+    out = {}
+    for k, v in changes.items():
+        d = defaults.get(k)
+        if isinstance(d, dict):
+            if isinstance(v, dict):
+                sub = _typed(v, d) if d else {kk: vv for kk, vv in v.items() if isinstance(vv, (str, int, float, bool))}
+                if sub:
+                    out[k] = sub
+        elif d is None or isinstance(v, type(d)) or (isinstance(d, float) and isinstance(v, int)):
+            if not (isinstance(d, (int, float)) and isinstance(v, bool)) or isinstance(d, bool):
+                out[k] = v
+    return out
+
+
 def editable_settings(changes: dict) -> dict:
     out = {}
     for k, v in (changes or {}).items():
@@ -91,6 +107,7 @@ def editable_settings(changes: dict) -> dict:
         sub = {kk: vv for kk, vv in v.items() if kk in allowed}
         if sub:
             out[k] = sub
+    out = _typed(out, DEFAULT_SETTINGS)
     if isinstance(out.get("models"), dict):
         out["models"] = {r: m for r, m in out["models"].items() if r in ("tutor", "solver", "coder", "vision", "embedding") and isinstance(m, str)
                          and re.fullmatch(r"[A-Za-z0-9._:/-]{1,80}", m)}

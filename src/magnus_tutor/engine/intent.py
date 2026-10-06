@@ -26,7 +26,9 @@ _MATHY = re.compile(r"=|\\frac|\\int|\^|\d\s*[*/+\-]\s*\d|\$|\bdef\b|\bfun\b|\bv
 # "Problem 3:" starts a new problem; "Problem 6.12" (a textbook lookup) must not be cut at the dot.
 _NEW_PROBLEM = re.compile(r"^\s*(new|next|another)\s+(problem|question|exercise)\b|^\s*(problem|exercise|question)\s+\d+[a-z]?\s*[:.)](?!\d)", re.I)
 _SOLUTION_NOW = re.compile(r"\b(now|before|show|yes|yeah|yep|sure|go\s+ahead|please|just\s+show)\b", re.I)
-_SOLUTION_AFTER = re.compile(r"\b(after|one\s+more|try\s+again|let\s+me\s+try|i'?ll\s+try|not\s+(now|yet)|wait|no|nope|later)\b", re.I)
+_SOLUTION_AFTER = re.compile(
+    r"\b(after|one\s+more|try\s+again|let\s+me\s+try|i'?ll\s+try|not\s+(right\s+)?(now|yet)|not\s+sure|wait|hold\s+on|no|nope|later|rather\s+not"
+    r"|don'?t|do\s+not|never\s?mind)\b", re.I)
 
 
 @dataclass

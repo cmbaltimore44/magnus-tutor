@@ -16,6 +16,7 @@ Events yielded to the caller (SSE in the web app, plain text in Magnus):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import AsyncIterator, Callable
@@ -219,7 +220,7 @@ class Tutor:
                 if transcribed:
                     check_text += "\n" + transcribed
                     user_text += f"\n\n[Transcription of the attached work]\n{transcribed}"
-            verdict = M.matches_reference(check_text, reference.get("final_answer", ""), reference.get("final_answer_sympy", ""))
+            verdict = await _bounded(M.matches_reference, check_text, reference.get("final_answer", ""), reference.get("final_answer_sympy", ""))
             if verdict is True:
                 state.last_check = "correct"
                 if confidence in ("verified", "agreed"):
@@ -322,7 +323,7 @@ class Tutor:
                     full += c.text
                     cut = _last_boundary(full)
                     if cut > released:
-                        if checker and (reason := checker.check(full[:cut], level)):
+                        if checker and (reason := await _bounded(checker.check, full[:cut], level)):
                             leaked = reason
                             break
                         yield {"type": "token", "text": full[released:cut]}
@@ -330,7 +331,7 @@ class Tutor:
                 if c.done:
                     stats = {**c.stats, "model": c.stats.get("model") or self.models.last_stats.get("model")}
             if not leaked and checker:
-                leaked = checker.check(full, level)
+                leaked = await _bounded(checker.check, full, level)
             if not leaked:
                 if len(full) > released:
                     yield {"type": "token", "text": full[released:]}
@@ -409,6 +410,14 @@ class Tutor:
                 content = content[:MAX_MESSAGE_CHARS] + "\n[…truncated]"
             out.append({"role": m["role"], "content": content})
         return out
+
+
+async def _bounded(fn, *args, timeout: float = 5.0):
+    """Math checks run in a thread with a time limit, so no input can stall the server."""
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout)
+    except (asyncio.TimeoutError, Exception):
+        return None
 
 
 def _user_msg(text: str, images: list[str], p: Paths) -> dict:

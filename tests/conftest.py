@@ -7,6 +7,7 @@ import pytest
 def tutor_home(tmp_path, monkeypatch):
     """Every test gets its own config/data dirs; the real ones are never touched."""
     monkeypatch.setenv("MAGNUS_TUTOR_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("MAGNUS_TUTOR_TESTING", "1")
     monkeypatch.setenv("MAGNUS_TUTOR_MAGNUS_DIR", str(tmp_path / "magnus-config"))  # never the real ~/.config/magnus
     import magnus_tutor.db as dbm
 

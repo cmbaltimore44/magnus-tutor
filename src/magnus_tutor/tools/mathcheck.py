@@ -24,7 +24,8 @@ from sympy.parsing.sympy_parser import (
 _TRANSFORMS = standard_transformations + (implicit_multiplication_application, convert_xor)
 # Names SymPy would otherwise read as built-ins (Q assumptions, E Euler's number, N(), S, gamma()...).
 # In physics they are variables. I stays the imaginary unit and pi stays pi.
-_LOCALS = {n: sp.Symbol(n) for n in ("Q", "E", "N", "S", "O", "C", "beta", "gamma", "zeta", "Lambda", "lamda", "B", "U", "V", "W", "F", "L", "R", "T")}
+_LOCALS = {n: sp.Symbol(n) for n in ("Q", "E", "N", "S", "O", "C", "beta", "gamma", "zeta", "Lambda", "lamda", "B", "U", "V", "W", "F", "L", "R", "T",
+                                     "hbar", "kB", "eps", "mu", "nu", "rho", "sigma", "tau", "phi", "psi", "chi", "theta", "omega", "alpha", "delta", "eta", "kappa", "xi")}
 
 # --- safe parsing ----------------------------------------------------------------------------
 # Student and model text must never reach eval(). SymPy's tokenizer turns the text into Python
@@ -32,34 +33,69 @@ _LOCALS = {n: sp.Symbol(n) for n in ("Q", "E", "N", "S", "O", "C", "beta", "gamm
 # + - * / **, a fixed set of functions, plain symbol names; no attributes, subscripts, keywords,
 # lambdas or dunder names) and only then evaluated with no builtins.
 
-_FUNCS = {n: getattr(sp, n) for n in ("sqrt", "exp", "log", "sin", "cos", "tan", "cot", "sec", "csc", "asin", "acos", "atan",
-                                      "sinh", "cosh", "tanh", "Abs")}
-_FUNCS["ln"] = sp.log
+_FUNCS = {n: getattr(sp, n) for n in ("sqrt", "cbrt", "exp", "log", "sin", "cos", "tan", "cot", "sec", "csc", "asin", "acos", "atan",
+                                      "atan2", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "Abs", "floor", "ceiling", "erf", "conjugate")}
+_FUNCS.update({"ln": sp.log, "max": sp.Max, "min": sp.Min, "Max": sp.Max, "Min": sp.Min, "abs": sp.Abs})
+_TWO_ARGS = {"log", "atan2", "max", "min", "Max", "Min"}
+_FUNC_ALIASES = {"arcsin": "asin", "arccos": "acos", "arctan": "atan", "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh", "ceil": "ceiling"}
 _CONSTS = {"pi": sp.pi, "I": sp.I, "oo": sp.oo}
 _CONSTRUCTORS = {"Symbol": sp.Symbol, "Integer": sp.Integer, "Float": sp.Float, "Rational": sp.Rational}
 _NAMESPACE = {**_FUNCS, **_CONSTS, **_CONSTRUCTORS}
 _OPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.USub, ast.UAdd)
 _SYMBOL_ARG = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,40}$")
-_NUMBER_ARG = re.compile(r"^[0-9][0-9.]*(?:[eE][-+]?[0-9]{1,3})?$")
-MAX_EXPONENT = 64
+_NUMBER_ARG = re.compile(r"^[0-9]{1,30}(?:\.[0-9]{0,30})?(?:[eE][-+]?[0-9]{1,2})?$")
+MAX_EXPONENT = 64  # a numeric exponent larger than this is never a real answer, and 9**9**9 hangs the server
+MAX_LOG10 = 300  # all-number parts may not exceed ~1e300 (no huge integers, no overflow to inf)
 
 
 class UnsafeExpression(ValueError):
     pass
 
 
-def _number(node) -> float | None:
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("Integer", "Float") and node.args:
-        a = node.args[0]
-        if isinstance(a, ast.Constant):
+def _static(node) -> float | None:
+    """Static value of an all-number subtree (floats, overflow → inf), or None if it has symbols.
+    Lets the checker bound sizes before anything is evaluated."""
+    if isinstance(node, ast.Expression):
+        return _static(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+        return float(node.value)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        if node.func.id in ("Integer", "Float") and node.args and isinstance(node.args[0], ast.Constant):
             try:
-                return float(a.value)
-            except (TypeError, ValueError):
-                return None
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
-        v = _number(node.operand)
-        return -v if v is not None else None
+                return float(node.args[0].value)
+            except (TypeError, ValueError, OverflowError):
+                return math.inf
+        if node.func.id == "Rational" and len(node.args) == 2:
+            a, b = _static(node.args[0]), _static(node.args[1])
+            return None if a is None or b is None else (a / b if b else math.inf)
+        return None
+    if isinstance(node, ast.UnaryOp):
+        v = _static(node.operand)
+        return None if v is None else (-v if isinstance(node.op, ast.USub) else v)
+    if isinstance(node, ast.BinOp):
+        a, b = _static(node.left), _static(node.right)
+        if a is None or b is None:
+            return None
+        try:
+            if isinstance(node.op, ast.Add):
+                return a + b
+            if isinstance(node.op, ast.Sub):
+                return a - b
+            if isinstance(node.op, ast.Mult):
+                return a * b
+            if isinstance(node.op, ast.Div):
+                return a / b if b else math.inf
+            if isinstance(node.op, ast.Pow):
+                if abs(b) > MAX_EXPONENT or (abs(a) > 1 and abs(b) * math.log10(abs(a)) > MAX_LOG10):
+                    return math.inf
+                return float(abs(a) ** b) if a >= 0 or float(b).is_integer() else math.nan
+        except (OverflowError, ZeroDivisionError, ValueError):
+            return math.inf
     return None
+
+
+def _too_big(v: float | None) -> bool:
+    return v is not None and (not math.isfinite(v) or (v != 0 and math.log10(abs(v)) > MAX_LOG10))
 
 
 def _check(node) -> None:
@@ -69,10 +105,11 @@ def _check(node) -> None:
         if not isinstance(node.op, _OPS):
             raise UnsafeExpression(type(node.op).__name__)
         if isinstance(node.op, ast.Pow):
-            exp = _number(node.right)
-            # 9**9**9 would hang the server: exponents must be small constants or symbolic.
-            if isinstance(node.right, ast.BinOp) and isinstance(node.right.op, ast.Pow) or (exp is not None and abs(exp) > MAX_EXPONENT):
+            exp = _static(node.right)
+            if exp is not None and (not math.isfinite(exp) or abs(exp) > MAX_EXPONENT):
                 raise UnsafeExpression("exponent too large")
+        if _too_big(_static(node)):
+            raise UnsafeExpression("number too large")
         _check(node.left)
         _check(node.right)
         return
@@ -93,31 +130,71 @@ def _check(node) -> None:
                     raise UnsafeExpression("constant")
                 if isinstance(v, str) and not (_SYMBOL_ARG.match(v) if name == "Symbol" else _NUMBER_ARG.match(v)):
                     raise UnsafeExpression("constant")
+            if _too_big(_static(node)):
+                raise UnsafeExpression("number too large")
             return
-        if len(node.args) != 1:
+        if len(node.args) not in ((1, 2) if name in _TWO_ARGS else (1,)):
             raise UnsafeExpression("arity")
-        return _check(node.args[0])
+        for a in node.args:
+            _check(a)
+        return
     if isinstance(node, ast.Name):
         if node.id.startswith("_") or node.id not in _NAMESPACE:
             raise UnsafeExpression(node.id)
         return
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+        if _too_big(float(node.value)):
+            raise UnsafeExpression("number too large")
         return
     raise UnsafeExpression(type(node).__name__)
 
 
+_IDENT_CALL = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+
 def safe_parse(text: str):
     """Plain math text → SymPy expression, without ever evaluating anything outside the allowlist."""
+    for alias, real in _FUNC_ALIASES.items():
+        text = re.sub(rf"\b{alias}\b", real, text)
+    # An unknown multi-letter name before "(" is a function we don't know (cbrt was once read as
+    # c*b*r*t): answer "can't tell" rather than compare the wrong thing. x(y+1) is still a product.
+    for m in _IDENT_CALL.finditer(text):
+        if len(m.group(1)) > 1 and m.group(1) not in _FUNCS:
+            raise UnsafeExpression(f"unknown function {m.group(1)}")
+    text = re.sub(r"(?<![A-Za-z0-9_])([A-Za-z])\s*\(", r"\1*(", text)  # x(y+1) means x*(y+1)
     code = stringify_expr(text, dict(_LOCALS), dict(_NAMESPACE), _TRANSFORMS)
     tree = ast.parse(code, mode="eval")
 
     class _LocalsAsConstants(ast.NodeTransformer):
         # Physics letters (Q, E, R, ...) appear as bare names bound to Symbols: fine to reference.
         def visit_Name(self, node):
-            return ast.Constant(0) if node.id in _LOCALS else node
+            return ast.Constant(1) if node.id in _LOCALS else node
 
-    _check(_LocalsAsConstants().visit(ast.parse(code, mode="eval")))
+    _check(_LocalsAsConstants().visit(ast.parse(ast.unparse(tree), mode="eval")))
     return eval(compile(tree, "<math>", "eval"), {"__builtins__": {}}, {**_NAMESPACE, **_LOCALS})  # noqa: S307 - allowlisted AST, no builtins
+
+
+def _latex_ok(expr) -> bool:
+    """The LaTeX parser builds expressions without our AST check: bound them the same way."""
+    for node in sp.preorder_traversal(expr):
+        if isinstance(node, (sp.factorial, sp.factorial2, sp.gamma, sp.Function)) and not isinstance(node, tuple(f for f in _FUNCS.values() if isinstance(f, type))):
+            return False
+        if isinstance(node, sp.Pow) and node.exp.is_number:
+            try:
+                e = float(node.exp)
+            except (TypeError, ValueError):
+                return False
+            if not math.isfinite(e) or abs(e) > MAX_EXPONENT:
+                return False
+        if isinstance(node, sp.Number):
+            try:
+                if _too_big(float(node)):
+                    return False
+            except (TypeError, ValueError, OverflowError):
+                return False
+    return True
+
+
 MAX_LEN = 240
 
 _LATEX_CLEAN = [
@@ -168,7 +245,8 @@ def to_sympy(text: str):
         try:
             from sympy.parsing.latex import parse_latex
 
-            return parse_latex(_clean_latex(s))
+            expr = parse_latex(_clean_latex(s))
+            return expr if _latex_ok(expr) else None
         except Exception:
             return None
     try:
@@ -225,6 +303,8 @@ def numeric_value(text: str) -> float | None:
         if e.free_symbols:
             return None
         v = complex(e.evalf())
+        if not (math.isfinite(v.real) and math.isfinite(v.imag)):
+            return None  # an overflow is never a real answer (and inf would "match" anything)
         return v.real if abs(v.imag) < 1e-12 else None
     except Exception:
         return None
@@ -249,6 +329,8 @@ def numbers_in(text: str) -> list[float]:
 
 
 def sig_close(a: float, b: float, rel: float = 0.01) -> bool:
+    if not (math.isfinite(a) and math.isfinite(b)):
+        return False
     if a == b:
         return True
     return abs(a - b) <= rel * max(abs(a), abs(b))
@@ -303,8 +385,8 @@ def matches_reference(text: str, ref_answer: str, ref_sympy: str = "") -> bool |
         if len(nums) != 1 or ref_num is None:
             return None
         return sig_close(nums[0], ref_num)
-    if re.search(r"\bor\b", final):
-        return None  # "3 or 7 or 12" is a guess, not an answer
+    if re.search(r"\bor\b", text) and len(candidate_expressions(text)) > 1:
+        return None  # "x = 12 or x = 7" is a guess, not an answer
     if ref_num is not None:
         # Numbers are compared like measurements (1%), whatever units or rounding.
         v = numeric_value(final)

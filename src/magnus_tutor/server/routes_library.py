@@ -178,9 +178,11 @@ async def clear_cache(request: Request):
     return {"ok": True}
 
 
-@router.get("/library/exercise")
-async def exercise(request: Request, chapter: str, number: str, course: str | None = None):
-    ex = await svc(request).lookup_exercise(course, chapter, number)
+@router.post("/library/exercise")
+async def exercise(request: Request):
+    """POST: looking up an exercise may run a vision repair and write to the database."""
+    body = await request.json()
+    ex = await svc(request).lookup_exercise(body.get("course"), str(body.get("chapter", "")), str(body.get("number", "")))
     if not ex:
         raise HTTPException(404, "exercise not found")
     return ex

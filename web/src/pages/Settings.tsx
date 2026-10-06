@@ -56,7 +56,7 @@ export function Settings() {
   const installed: any[] = models?.installed || [];
 
   const startPull = async (name: string) => {
-    const r = await api.get(`/models/size?name=${encodeURIComponent(name)}`).catch(() => ({ size: null }));
+    const r = await api.post('/models/size', { name }).catch(() => ({ size: null }));
     setPull({ name, size: r.size });
   };
   const confirmPull = async () => {

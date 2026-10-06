@@ -41,7 +41,9 @@ def request_problem(request: Request, port: int) -> str | None:
     client = request.client.host if request.client else ""
     if client not in ("127.0.0.1", "::1", "localhost", "testclient"):
         return "localhost only"
-    hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}", "testserver"}
+    hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+    if os.environ.get("MAGNUS_TUTOR_TESTING"):
+        hosts.add("testserver")  # FastAPI's TestClient, only under pytest
     if os.environ.get("MAGNUS_TUTOR_DEV_ORIGIN"):
         hosts |= {"127.0.0.1:5173", "localhost:5173"}
     if request.headers.get("host", "") not in hosts:
@@ -104,7 +106,7 @@ def create_app(state: AppState | None = None, *, manage_processes: bool = True) 
     async def localhost_only(request: Request, call_next):
         problem = request_problem(request, app.state.tutor.settings["server"]["port"])
         if problem:
-            return JSONResponse({"error": problem}, status_code=403)
+            return JSONResponse({"error": problem}, status_code=403, headers=SECURITY_HEADERS)
         if request.url.path.startswith("/api/") and request.url.path not in ("/api/health", "/api/events"):
             app.state.tutor.touch()
         response = await call_next(request)

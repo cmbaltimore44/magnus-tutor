@@ -226,7 +226,8 @@ def test_intent_rules():
     assert classify("now", solution_offer_pending=True).solution_when == "now"
     assert classify("after one more try", solution_offer_pending=True).solution_when == "after"
     assert classify("I tried using Gauss's law but I'm stuck").attempt
-    for no in ["Not now, let me try", "no, not now", "nope", "later"]:
+    for no in ["Not now, let me try", "no, not now", "nope", "later", "don't show me yet", "Don't show me", "please don't", "not right now",
+               "I am not sure now", "I'd rather not"]:
         assert classify(no, solution_offer_pending=True).solution_when == "after", no
     assert classify("ok so now I have v = 3t", solution_offer_pending=True).solution_when != "now"
     assert classify("yes please", solution_offer_pending=True).solution_when == "now"

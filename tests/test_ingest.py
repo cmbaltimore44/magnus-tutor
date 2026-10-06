@@ -173,3 +173,22 @@ async def test_interrupted_embeddings_resume(svc, p):
         await asyncio.sleep(0.02)
     assert not db.one("SELECT 1 FROM chunks WHERE embedding IS NULL")
     s.task.cancel()
+
+
+async def test_resumed_embeddings_keep_document_status(svc, p):
+    import asyncio
+
+    s, fp, db = svc
+    c = C.create_course("E&M", p=p)
+    make_textbook(c.folder("textbooks") / "book.pdf")
+    [did] = s.scan()
+    await s.process(did)
+    db.execute("UPDATE documents SET status = 'needs_confirmation' WHERE id = ?", (did,))
+    db.execute("UPDATE chunks SET embedding = NULL")
+    s.kick()
+    for _ in range(100):
+        if not db.one("SELECT 1 FROM chunks WHERE embedding IS NULL"):
+            break
+        await asyncio.sleep(0.02)
+    assert db.one("SELECT status FROM documents WHERE id = ?", (did,))["status"] == "needs_confirmation"
+    s.task.cancel()

@@ -114,7 +114,14 @@ class Quizzer:
             raise KeyError(item_id)
         src = json.loads(item["source"]) if item["source"] else None
         # Real math first: a matching value or expression is correct whatever the wording.
-        math_ok = M.matches_reference(student_answer, item["answer"] or "") if item["answer"] else None
+        math_ok = None
+        if item["answer"]:
+            import asyncio
+
+            try:  # in a thread with a time limit, so no answer can stall the server
+                math_ok = await asyncio.wait_for(asyncio.to_thread(M.matches_reference, student_answer, item["answer"]), 5)
+            except Exception:
+                math_ok = None
         user = (
             f"Question: {item['question']}\nExpected answer: {item['answer']}\n"
             + (f"Source passage ({src['label']}):\n{src.get('text', '')[:1500]}\n" if src else "")

@@ -104,6 +104,7 @@ def _profile(workdir: Path, extra_read: list[str], network: bool = False, extra_
 {writes}
 (allow file-write* (literal "/dev/null") (literal "/dev/stdout") (literal "/dev/stderr") (literal "/dev/tty") (literal "/dev/dtracehelper"))
 (deny file-read* (subpath "{home}"))
+(deny file-read* (subpath "/Volumes"))
 {reads}
 (deny process-exec (literal "/usr/bin/open") (literal "/usr/bin/osascript") (literal "/bin/launchctl") (literal "/usr/bin/pbcopy")
   (literal "/usr/bin/pbpaste") (literal "/usr/bin/security") (literal "/usr/bin/lsappinfo") (literal "/usr/bin/say") (literal "/usr/sbin/screencapture"))
