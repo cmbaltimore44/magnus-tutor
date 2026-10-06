@@ -84,7 +84,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "models": {
         "tutor": "qwen3.5:9b",
         "solver": "qwen3.5:9b",
-        "coder": "qwen3.5:9b",
+        "coder": "qwen2.5-coder:7b",  # benchmark: 11/12 code problems vs 6/11 for qwen3.5:9b; loaded only for code turns
         "vision": "qwen3.5:9b",
         "embedding": "qwen3-embedding:0.6b",
     },

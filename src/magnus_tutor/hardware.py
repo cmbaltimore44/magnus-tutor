@@ -34,6 +34,7 @@ CATALOGUE = [
     {"tag": "gemma4:12b", "gb": 8.0, "roles": ["tutor", "solver", "vision"], "tier": "standard"},
     {"tag": "qwen3:14b", "gb": 9.3, "roles": ["tutor", "solver", "coder"], "tier": "standard"},
     {"tag": "deepseek-r1:14b", "gb": 9.0, "roles": ["solver"], "tier": "standard"},
+    {"tag": "qwen2.5-coder:7b", "gb": 4.7, "roles": ["coder"], "tier": "standard"},
     {"tag": "qwen3.6:27b", "gb": 17.0, "roles": ["tutor", "solver", "coder", "vision"], "tier": "experimental"},
     {"tag": "qwen3-embedding:0.6b", "gb": 0.64, "roles": ["embedding"], "tier": "any"},
 ]
@@ -81,6 +82,8 @@ def recommend(hw: Hardware) -> dict:
     fits = [m for m in CATALOGUE if m["gb"] <= budget and m["tier"] != "experimental"]
     main = "qwen3.5:4b" if preset == "light" else "qwen3.5:9b"
     models = {r: main for r in ("tutor", "solver", "coder", "vision")}
+    if preset != "light":
+        models["coder"] = "qwen2.5-coder:7b"  # clear win on the code benchmark; swapped in only for code turns
     models["embedding"] = "qwen3-embedding:0.6b"
     experimental = [m["tag"] for m in CATALOGUE if m["tier"] == "experimental" and m["gb"] <= hw.ram_gb * 0.75]
     return {

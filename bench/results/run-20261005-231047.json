@@ -1,0 +1,277 @@
+{
+ "models": [
+  "qwen3.5:4b"
+ ],
+ "roles": [
+  "tutor"
+ ],
+ "budget": 2500,
+ "records": [
+  {
+   "id": "em-point-charge",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "45000 N/C",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 27.378,
+    "ttft_s": 2.041,
+    "load_s": 1.785,
+    "prompt_tokens": 166,
+    "eval_tokens": 923,
+    "tokens_per_s": 36.4
+   },
+   "elapsed_s": 27.52
+  },
+  {
+   "id": "em-line-charge",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "\\frac{|\\lambda|}{2\\pi\\varepsilon_0 r}",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 14.679,
+    "ttft_s": 0.283,
+    "load_s": 0.002,
+    "prompt_tokens": 164,
+    "eval_tokens": 532,
+    "tokens_per_s": 37.0
+   },
+   "elapsed_s": 14.86
+  },
+  {
+   "id": "em-capacitor",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "94.87 pF",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 22.317,
+    "ttft_s": 0.277,
+    "load_s": 0.002,
+    "prompt_tokens": 160,
+    "eval_tokens": 816,
+    "tokens_per_s": 37.0
+   },
+   "elapsed_s": 22.33
+  },
+  {
+   "id": "em-potential",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "18000 V",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 19.773,
+    "ttft_s": 0.282,
+    "load_s": 0.002,
+    "prompt_tokens": 157,
+    "eval_tokens": 715,
+    "tokens_per_s": 36.7
+   },
+   "elapsed_s": 19.78
+  },
+  {
+   "id": "em-solid-sphere",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "\\frac{Qr}{4\\pi\\epsilon_0 R^3}",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 19.814,
+    "ttft_s": 0.288,
+    "load_s": 0.002,
+    "prompt_tokens": 170,
+    "eval_tokens": 710,
+    "tokens_per_s": 36.4
+   },
+   "elapsed_s": 19.84
+  },
+  {
+   "id": "em-wire-field",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "8.0e-7 T",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 15.632,
+    "ttft_s": 0.278,
+    "load_s": 0.002,
+    "prompt_tokens": 157,
+    "eval_tokens": 577,
+    "tokens_per_s": 37.6
+   },
+   "elapsed_s": 15.64
+  },
+  {
+   "id": "em-solenoid",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "2.0 T",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 9.722,
+    "ttft_s": 0.271,
+    "load_s": 0.002,
+    "prompt_tokens": 160,
+    "eval_tokens": 362,
+    "tokens_per_s": 38.3
+   },
+   "elapsed_s": 9.73
+  },
+  {
+   "id": "em-faraday",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "0.5 V",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 11.642,
+    "ttft_s": 0.276,
+    "load_s": 0.002,
+    "prompt_tokens": 177,
+    "eval_tokens": 441,
+    "tokens_per_s": 38.8
+   },
+   "elapsed_s": 11.65
+  },
+  {
+   "id": "em-cap-energy",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "0.72 J",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 11.495,
+    "ttft_s": 0.27,
+    "load_s": 0.002,
+    "prompt_tokens": 147,
+    "eval_tokens": 435,
+    "tokens_per_s": 38.7
+   },
+   "elapsed_s": 11.51
+  },
+  {
+   "id": "qm-well-ground",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "\\frac{\\hbar^2 \\pi^2}{2mL^2}",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 14.818,
+    "ttft_s": 0.27,
+    "load_s": 0.002,
+    "prompt_tokens": 157,
+    "eval_tokens": 563,
+    "tokens_per_s": 38.7
+   },
+   "elapsed_s": 14.84
+  },
+  {
+   "id": "qm-electron-well",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "37.6 eV",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 17.378,
+    "ttft_s": 0.271,
+    "load_s": 0.003,
+    "prompt_tokens": 163,
+    "eval_tokens": 665,
+    "tokens_per_s": 38.9
+   },
+   "elapsed_s": 17.39
+  },
+  {
+   "id": "qm-sho",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "E_3 = \\frac{15}{2} \\hbar \\omega",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 9.146,
+    "ttft_s": 0.274,
+    "load_s": 0.002,
+    "prompt_tokens": 163,
+    "eval_tokens": 323,
+    "tokens_per_s": 36.4
+   },
+   "elapsed_s": 9.17
+  },
+  {
+   "id": "qm-normalize",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "\\frac{2}{\\sqrt{3}L}",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 36.076,
+    "ttft_s": 0.272,
+    "load_s": 0.002,
+    "prompt_tokens": 161,
+    "eval_tokens": 1378,
+    "tokens_per_s": 38.5
+   },
+   "elapsed_s": 36.09
+  },
+  {
+   "id": "qm-de-broglie",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:4b",
+   "role": "tutor",
+   "answer": "0.123 nm",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 17.464,
+    "ttft_s": 0.273,
+    "load_s": 0.002,
+    "prompt_tokens": 153,
+    "eval_tokens": 664,
+    "tokens_per_s": 38.6
+   },
+   "elapsed_s": 17.48
+  }
+ ]
+}

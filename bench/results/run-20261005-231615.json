@@ -1,0 +1,239 @@
+{
+ "models": [
+  "qwen2.5-coder:7b"
+ ],
+ "roles": [
+  "tutor"
+ ],
+ "budget": 2500,
+ "records": [
+  {
+   "id": "sml-sum",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "10\n0",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 3.351,
+    "ttft_s": 2.244,
+    "load_s": 2.052,
+    "prompt_tokens": 87,
+    "eval_tokens": 30,
+    "tokens_per_s": 27.1
+   },
+   "elapsed_s": 3.4
+  },
+  {
+   "id": "sml-reverse",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "3,2,1\n100000",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.06,
+    "ttft_s": 0.186,
+    "load_s": 0.004,
+    "prompt_tokens": 96,
+    "eval_tokens": 51,
+    "tokens_per_s": 27.2
+   },
+   "elapsed_s": 2.1
+  },
+  {
+   "id": "sml-fib",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "55\n102334155",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.852,
+    "ttft_s": 0.196,
+    "load_s": 0.002,
+    "prompt_tokens": 114,
+    "eval_tokens": 72,
+    "tokens_per_s": 27.1
+   },
+   "elapsed_s": 2.88
+  },
+  {
+   "id": "sml-tree-depth",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "3\n0",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.018,
+    "ttft_s": 0.197,
+    "load_s": 0.002,
+    "prompt_tokens": 110,
+    "eval_tokens": 49,
+    "tokens_per_s": 26.9
+   },
+   "elapsed_s": 2.05
+  },
+  {
+   "id": "sml-count-if",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "3\n2",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 1.483,
+    "ttft_s": 0.185,
+    "load_s": 0.002,
+    "prompt_tokens": 92,
+    "eval_tokens": 35,
+    "tokens_per_s": 27.0
+   },
+   "elapsed_s": 1.51
+  },
+  {
+   "id": "sml-lookup",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "SOME 2\nNONE",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 1.948,
+    "ttft_s": 0.184,
+    "load_s": 0.002,
+    "prompt_tokens": 92,
+    "eval_tokens": 48,
+    "tokens_per_s": 27.2
+   },
+   "elapsed_s": 1.98
+  },
+  {
+   "id": "py-wordcount",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "[('hello', 2), ('mapreduce', 1), ('world', 2)]",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 1.855,
+    "ttft_s": 0.197,
+    "load_s": 0.002,
+    "prompt_tokens": 112,
+    "eval_tokens": 45,
+    "tokens_per_s": 27.1
+   },
+   "elapsed_s": 1.89
+  },
+  {
+   "id": "py-duration",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "Traceback (most recent call last):\n  File \"main.py\", line 20, in <module>\n    print([parse_duration(x) for x in [\"1h30m\", \"45s\", \"2h\", \"1h2m3s\"]])\n           ^^^^^^^^^^^^^^^^^\n  File \"main.py\", line 4, in parse_duration\n    hours = int(time_parts[0]) if time_parts[0] else 0\n            ^^^^^^^^^^^^^^^^^^\nValueError: invalid literal for int() with base 10: '45s'\n",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 6.218,
+    "ttft_s": 0.19,
+    "load_s": 0.002,
+    "prompt_tokens": 103,
+    "eval_tokens": 162,
+    "tokens_per_s": 26.9
+   },
+   "elapsed_s": 6.25
+  },
+  {
+   "id": "java-gcd",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "6\n1",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.279,
+    "ttft_s": 0.181,
+    "load_s": 0.002,
+    "prompt_tokens": 91,
+    "eval_tokens": 57,
+    "tokens_per_s": 27.2
+   },
+   "elapsed_s": 2.45
+  },
+  {
+   "id": "docker-flask",
+   "course": "cloud",
+   "kind": "config",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 5.084,
+    "ttft_s": 0.185,
+    "load_s": 0.002,
+    "prompt_tokens": 95,
+    "eval_tokens": 132,
+    "tokens_per_s": 26.9
+   },
+   "elapsed_s": 5.15
+  },
+  {
+   "id": "k8s-deployment",
+   "course": "cloud",
+   "kind": "config",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 3.553,
+    "ttft_s": 0.18,
+    "load_s": 0.002,
+    "prompt_tokens": 80,
+    "eval_tokens": 91,
+    "tokens_per_s": 27.0
+   },
+   "elapsed_s": 3.6
+  },
+  {
+   "id": "k8s-service",
+   "course": "cloud",
+   "kind": "config",
+   "model": "qwen2.5-coder:7b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.613,
+    "ttft_s": 0.178,
+    "load_s": 0.002,
+    "prompt_tokens": 77,
+    "eval_tokens": 66,
+    "tokens_per_s": 27.1
+   },
+   "elapsed_s": 2.77
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "model": "qwen3.5:9b",
+ "baseline": {
+  "ttft_s": 0.078,
+  "total_s": 2.738
+ },
+ "queued_behind_solver": {
+  "ttft_s": 64.97,
+  "total_s": 67.63
+ },
+ "with_preemption": {
+  "ttft_s": 0.16,
+  "total_s": 2.59,
+  "solver": "preempted"
+ },
+ "num_parallel": 1
+}
