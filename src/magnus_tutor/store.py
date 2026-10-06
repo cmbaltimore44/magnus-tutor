@@ -153,11 +153,10 @@ def image_b64(p: Paths, upload_id: str) -> str | None:
 
 
 def _to_png(data: bytes) -> bytes | None:
+    """HEIC/WebP/GIF → PNG, converted in the sandboxed PDF worker (PyMuPDF reads most images)."""
     try:
-        import fitz  # PyMuPDF reads most image formats
+        from .ingest.pdf import image_to_png
 
-        doc = fitz.open(stream=data)
-        pix = doc[0].get_pixmap()
-        return pix.tobytes("png")
+        return image_to_png(data)
     except Exception:
         return None

@@ -107,9 +107,12 @@ async def resume_to_profile(request: Request):
         raise HTTPException(400, "The resume must be a PDF in your home folder, e.g. ~/.config/magnus-tutor/resume.pdf.")
     if not f.exists():
         raise HTTPException(404, f"No resume found. Put resume.pdf in {s.p.config}.")
-    import fitz
+    from ..ingest.pdf import PdfWorkerError, text_of
 
-    text = "\n".join(page.get_text() for page in fitz.open(f))[:12000]
+    try:
+        text = (await asyncio.to_thread(text_of, f))[:12000]  # parsed in the sandboxed PDF worker
+    except PdfWorkerError as e:
+        raise HTTPException(400, str(e))
     prompt = (
         "Summarize this student's resume in 3-4 sentences for a tutor: coursework, technical skills, "
         "programming languages, research or work experience. Plain text, no preamble.\n\n" + text

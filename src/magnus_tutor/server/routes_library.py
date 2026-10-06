@@ -95,7 +95,9 @@ async def confirm(did: int, request: Request):
 @router.delete("/library/documents/{did}")
 async def forget(did: int, request: Request):
     """Remove derived data (text, embeddings). The PDF itself is never touched."""
-    svc(request).delete_document(did)
+    s = svc(request)
+    async with s.lock(did):
+        s.delete_document(did)
     return {"ok": True}
 
 

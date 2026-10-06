@@ -140,8 +140,9 @@ def has_gaps(plain: str) -> bool:
     return tiny / len(lines) > 0.28 or dangling >= 4 or lone >= 3
 
 
-def extract_pages(path: Path, progress=None, markdown: bool = True) -> tuple[list[PageInfo], list[Section], str]:
-    """Text for every page. Markdown (headings, joined paragraphs) when possible."""
+def _extract_inprocess(path: Path, progress=None, markdown: bool = True) -> tuple[list[PageInfo], list[Section], str]:
+    """Text for every page. Markdown (headings, joined paragraphs) when possible. Runs inside
+    the sandboxed worker; the backend calls extract_pages()."""
     with open_pdf(path) as doc:
         return _extract(doc, path, progress, markdown)
 
@@ -176,11 +177,6 @@ def _extract(doc, path: Path, progress, markdown: bool):
     return pages, secs, title_of(doc, path)
 
 
-def render_png(path: Path, index: int, zoom: float = 1.6, highlight: str | None = None) -> bytes:
-    with open_pdf(path) as doc:
-        return _render(doc[index], zoom, highlight)
-
-
 def _render(page, zoom: float, highlight: str | None) -> bytes:
     if highlight:
         needle = re.sub(r"\s+", " ", highlight).strip()[:80]
@@ -200,17 +196,183 @@ def _render(page, zoom: float, highlight: str | None) -> bytes:
     return pix.tobytes("png")
 
 
+# --- the backend side: everything below runs the parser in the sandboxed worker ----------------
+
+import json as _json  # noqa: E402
+import os as _os  # noqa: E402
+import shutil as _shutil  # noqa: E402
+import subprocess as _subprocess  # noqa: E402
+import sys as _sys  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
+
+_REPO_SRC = Path(__file__).resolve().parents[2]
+
+
+class PdfWorkerError(RuntimeError):
+    pass
+
+
+def _profile(pdf_path: Path, outdir: Path) -> str:
+    home = str(Path.home())
+    py = Path(_sys.executable).resolve()
+    # The PDF, the output folder, the tutor's code and venv, and the folder of Python interpreters
+    # (the venv's python links through uv's version-alias folder). Nothing else in your home folder.
+    reads = {str(pdf_path.resolve()), str(outdir), str(_REPO_SRC), str(Path(_sys.prefix)), str(Path(_sys.base_prefix).parent), str(py.parent.parent)}
+    allow = "\n".join(f'(allow file-read* (subpath "{r}"))' for r in sorted(reads))
+    return f"""(version 1)
+(allow default)
+(deny network*)
+(deny file-write*)
+(allow file-write* (subpath "{outdir}"))
+(allow file-write* (literal "/dev/null"))
+(deny file-read* (subpath "{home}"))
+(deny file-read* (subpath "/Volumes"))
+{allow}
+(deny process-fork)
+(deny process-exec (literal "/usr/bin/open") (literal "/usr/bin/osascript") (literal "/bin/launchctl"))
+(deny mach-lookup (global-name "com.apple.coreservices.launchservicesd") (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.coreservices.appleevents") (global-name "com.apple.SecurityServer"))
+"""
+
+
+def _run(cmd: str, pdf_path: Path, *args: str, timeout: float = 120, progress=None) -> Path:
+    """Run the worker; returns its output folder (caller deletes it)."""
+    outdir = Path(_tempfile.mkdtemp(prefix="tutor-pdf-")).resolve()
+    argv = [_sys.executable, "-I", "-m", "magnus_tutor.ingest.pdfworker", cmd, str(pdf_path), str(outdir), *args]
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(outdir), "TMPDIR": str(outdir), "PYTHONPATH": str(_REPO_SRC), "LANG": "en_US.UTF-8"}
+    if _shutil.which("sandbox-exec") and not _os.environ.get("MAGNUS_TUTOR_PDF_UNSANDBOXED"):
+        argv = ["sandbox-exec", "-p", _profile(pdf_path, outdir), *argv]
+
+    def limits():
+        import resource
+
+        resource.setrlimit(resource.RLIMIT_CPU, (int(timeout), int(timeout) + 1))
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        _os.nice(10)
+
+    proc = _subprocess.Popen(argv, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, text=True, env=env, cwd=str(outdir), preexec_fn=limits)
+    try:
+        for line in proc.stdout:
+            if progress and line.startswith("PROGRESS "):
+                try:
+                    progress(float(line.split()[1]))
+                except ValueError:
+                    pass
+        proc.wait(timeout=timeout)
+    except _subprocess.TimeoutExpired:
+        proc.kill()
+        _shutil.rmtree(outdir, ignore_errors=True)
+        raise PdfWorkerError("reading the PDF took too long")
+    if proc.returncode != 0:
+        err = (proc.stderr.read() or "").strip().splitlines()[-1:] if proc.stderr else []
+        _shutil.rmtree(outdir, ignore_errors=True)
+        raise PdfWorkerError(f"couldn't read the PDF ({err[0][:200] if err else 'exit ' + str(proc.returncode)})")
+    return outdir
+
+
+def _sections_from(data: list[dict]) -> list[Section]:
+    return [Section(**d) for d in data]
+
+
+def extract_pages(path: Path, progress=None, markdown: bool = True) -> tuple[list[PageInfo], list[Section], str]:
+    """Text for every page (in the sandboxed worker). Large books may take a minute or two."""
+    out = _run("extract", path, "1" if markdown else "0", timeout=900, progress=progress)
+    try:
+        data = _json.loads((out / "result.json").read_text())
+    finally:
+        _shutil.rmtree(out, ignore_errors=True)
+    secs = _sections_from(data["sections"])
+    pages = [PageInfo(index=p["index"], printed=p["printed"], text=p["text"], has_text=p["has_text"], gaps=p["gaps"],
+                      section=deepest_section(secs, p["index"]), extra={"plain": p["plain"]}) for p in data["pages"]]
+    return pages, secs, data["title"]
+
+
+def render_pages(path: Path, indices: list[int], zoom: float = 1.4, highlight: str | None = None) -> dict[int, bytes]:
+    """PNG renders of several pages in one worker run. The highlight text is passed as a
+    plain argument (an argv list, never a shell)."""
+    if not indices:
+        return {}
+    args = [str(zoom), ",".join(str(int(i)) for i in indices)]
+    if highlight:
+        args.append(highlight[:400])
+    out = _run("render", path, *args, timeout=60 + 2 * len(indices))
+    try:
+        return {i: (out / f"{i}.png").read_bytes() for i in indices if (out / f"{i}.png").exists()}
+    finally:
+        _shutil.rmtree(out, ignore_errors=True)
+
+
+def render_png(path: Path, index: int, zoom: float = 1.6, highlight: str | None = None) -> bytes:
+    png = render_pages(path, [index], zoom, highlight).get(index)
+    if png is None:
+        raise PdfWorkerError("couldn't render that page")
+    return png
+
+
 def page_image_hash(path: Path, index: int) -> tuple[str, bytes]:
     """Rendered page image (for vision) and its hash (transcriptions are cached by it)."""
     png = render_png(path, index, zoom=1.4)
     return hashlib.sha256(png).hexdigest(), png
 
 
+def page_images(path: Path, indices: list[int]) -> dict[int, tuple[str, bytes]]:
+    """Batch version of page_image_hash: one worker run for many pages."""
+    out = {}
+    for start in range(0, len(indices), 40):
+        for i, png in render_pages(path, indices[start : start + 40], zoom=1.4).items():
+            out[i] = (hashlib.sha256(png).hexdigest(), png)
+    return out
+
+
 def page_count(path: Path) -> int:
-    with open_pdf(path) as doc:
-        return doc.page_count
+    out = _run("sections", path, timeout=60)
+    try:
+        return _json.loads((out / "result.json").read_text())["pages"]
+    finally:
+        _shutil.rmtree(out, ignore_errors=True)
 
 
 def sections_of(path: Path) -> list[Section]:
-    with open_pdf(path) as doc:
-        return sections(doc)
+    out = _run("sections", path, timeout=60)
+    try:
+        return _sections_from(_json.loads((out / "result.json").read_text())["sections"])
+    finally:
+        _shutil.rmtree(out, ignore_errors=True)
+
+
+def text_of(path_or_bytes, name: str = "upload.pdf") -> str:
+    """All text of a PDF given as a path or as uploaded bytes (syllabus, resume)."""
+    tmp = None
+    if isinstance(path_or_bytes, (bytes, bytearray)):
+        fd, tmpname = _tempfile.mkstemp(prefix="tutor-upload-", suffix=".pdf")
+        _os.write(fd, path_or_bytes)
+        _os.close(fd)
+        tmp = Path(tmpname)
+        path = tmp
+    else:
+        path = Path(path_or_bytes)
+    try:
+        out = _run("text", path, timeout=60)
+        try:
+            return "\n".join(_json.loads((out / "result.json").read_text())["pages"])
+        finally:
+            _shutil.rmtree(out, ignore_errors=True)
+    finally:
+        if tmp:
+            tmp.unlink(missing_ok=True)
+
+
+def image_to_png(data: bytes) -> bytes | None:
+    """Convert an uploaded image (HEIC, WebP, GIF...) to PNG in the worker."""
+    fd, tmpname = _tempfile.mkstemp(prefix="tutor-upload-", suffix=".img")
+    _os.write(fd, data)
+    _os.close(fd)
+    try:
+        out = _run("render", Path(tmpname), "1.0", "0", timeout=30)
+        try:
+            f = out / "0.png"
+            return f.read_bytes() if f.exists() else None
+        finally:
+            _shutil.rmtree(out, ignore_errors=True)
+    finally:
+        Path(tmpname).unlink(missing_ok=True)

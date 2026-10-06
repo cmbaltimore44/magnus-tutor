@@ -37,13 +37,13 @@ def make_textbook(path, offset=10):
     doc.save(path)
 
 
-def make_handwritten(path, pages=2):
+def make_handwritten(path, pages=2, label="handwritten page"):
     from PIL import Image, ImageDraw
 
     doc = pymupdf.open()
     for i in range(pages):
         img = Image.new("RGB", (600, 800), "white")
-        ImageDraw.Draw(img).text((40, 40), f"{path.stem}: handwritten page {i} about capacitors", fill="black")
+        ImageDraw.Draw(img).text((40, 40), f"{path.stem}: {label} {i} about capacitors", fill="black")
         buf = io.BytesIO()
         img.save(buf, "PNG")
         page = doc.new_page()

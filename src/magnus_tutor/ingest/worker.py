@@ -73,6 +73,11 @@ class IngestService:
         self.task: asyncio.Task | None = None
         self.watch_task: asyncio.Task | None = None
         self.current: int | None = None
+        self._locks: dict[int, asyncio.Lock] = {}
+
+    def lock(self, did: int) -> asyncio.Lock:
+        """One writer per document: ingestion, manual fixes, repairs and deletion never interleave."""
+        return self._locks.setdefault(did, asyncio.Lock())
 
     def cfg(self) -> dict:
         return {"confirm_over_pages": 10, "seconds_per_vision_page": 40, "batch_pause_s": 0.3, "auto_repair": True, **self.settings().get("ingest", {})}
@@ -189,7 +194,8 @@ class IngestService:
     async def _process_safe(self, did: int) -> None:
         self.current = did
         try:
-            await self.process(did)
+            async with self.lock(did):
+                await self.process(did)
         except Preempted:
             self.db.update("documents", did, status="queued")
         except Exception as e:
@@ -237,28 +243,38 @@ class IngestService:
                        page_labels=[pg.printed for pg in pages])
 
         # Tier 2: macOS OCR for pages without text, and for textbook pages with dropped equations.
+        # Pages are rendered by the sandboxed PDF worker in batches; OCR results are cached by
+        # page-image hash (also for notes), so an interrupted run restarts cheaply.
         ocr_targets = [pg for pg in pages if not pg.has_text or (doc["kind"] == "textbook" and pg.gaps)]
         vision_needed = []
-        for i, pg in enumerate(ocr_targets):
-            sha, png = await self._run(pdf.page_image_hash, path, pg.index)
-            pg.extra["sha"] = sha
-            cached = self.db.one("SELECT text, model FROM transcriptions WHERE sha256 = ?", (sha,))
-            if cached:
-                pg.text, pg.extra["method"] = cached["text"], "vision" if cached["model"] != "apple-ocr" else "ocr"
-                continue
-            if doc["kind"] == "notes" and not pg.has_text:
-                vision_needed.append((pg, png))
-            text = await self._run(apple_ocr, png)
-            if text:
-                if pg.has_text:  # textbook gap page: OCR text recovers inline symbols and values
-                    pg.extra["text_layer"] = pg.text
-                pg.text = text
-                pg.extra["method"] = "ocr"
-                if not (doc["kind"] == "notes" and not pg.has_text):
-                    self.db.execute("INSERT OR REPLACE INTO transcriptions(sha256, text, model, created_at) VALUES (?, ?, 'apple-ocr', ?)", (sha, text, now()))
-            if i % 20 == 0:
-                self._progress(did, 0.3 + 0.1 * (i + 1) / max(1, len(ocr_targets)))
-                await asyncio.sleep(0)
+        done_n = 0
+        for start in range(0, len(ocr_targets), 40):
+            batch = ocr_targets[start : start + 40]
+            images = await self._run(pdf.page_images, path, [pg.index for pg in batch])
+            for pg in batch:
+                done_n += 1
+                if pg.index not in images:
+                    continue
+                sha, png = images[pg.index]
+                pg.extra["sha"] = sha
+                vision = self.db.one("SELECT text FROM transcriptions WHERE sha256 = ? AND model != 'apple-ocr'", (sha,))
+                if vision:
+                    pg.text, pg.extra["method"] = vision["text"], "vision"
+                    continue
+                if doc["kind"] == "notes" and not pg.has_text:
+                    vision_needed.append((pg, png))
+                cached = self.db.one("SELECT text FROM transcriptions WHERE sha256 IN (?, ?) AND model = 'apple-ocr'", (f"ocr:{sha}", sha))
+                text = cached["text"] if cached else await self._run(apple_ocr, png)
+                if text:
+                    if pg.has_text:  # textbook gap page: OCR text recovers inline symbols and values
+                        pg.extra["text_layer"] = pg.text
+                    pg.text = text
+                    pg.extra["method"] = "ocr"
+                    if not cached:
+                        self.db.execute("INSERT OR REPLACE INTO transcriptions(sha256, text, model, created_at) VALUES (?, ?, 'apple-ocr', ?)",
+                                        (f"ocr:{sha}", text, now()))
+            self._progress(did, 0.3 + 0.1 * done_n / max(1, len(ocr_targets)))
+            await asyncio.sleep(0)
 
         # Tier 3: the vision LLM for handwriting (big jobs need confirmation).
         if vision_needed:
@@ -308,11 +324,13 @@ class IngestService:
                 method = "embedded-gaps"
             sha = pg.extra.get("sha") or hashlib.sha256(pg.text.encode()).hexdigest()
             rows.append((did, pg.index, pg.printed, sha, pg.text, method, f"{did}:{pg.index}", ))
-        existing = {r["page_index"]: r for r in self.db.all("SELECT page_index, method, text FROM pages WHERE document_id = ?", (did,))}
+        existing = {r["page_index"]: r for r in self.db.all("SELECT page_index, method, text, sha256 FROM pages WHERE document_id = ?", (did,))}
         for r in rows:
             prev = existing.get(r[1])
-            if prev and (prev["method"] == "edited" or (prev["method"] == "vision" and r[5] != "vision")):
-                continue  # the student's fixes always win; vision repairs beat cheaper text
+            # The student's fixes and vision repairs win over cheaper text, but only while the page
+            # itself is unchanged (a replaced PDF must not inherit fixes made to a different page).
+            if prev and prev["sha256"] == r[3] and (prev["method"] == "edited" or (prev["method"] == "vision" and r[5] != "vision")):
+                continue
             self.db.execute(
                 "INSERT INTO pages(document_id, page_index, printed_page, sha256, text, method, image_ref) VALUES (?,?,?,?,?,?,?) "
                 "ON CONFLICT(document_id, page_index) DO UPDATE SET printed_page=excluded.printed_page, sha256=excluded.sha256, text=excluded.text, method=excluded.method",
@@ -379,8 +397,9 @@ class IngestService:
     async def fix_page(self, did: int, page_index: int, text: str) -> None:
         """The student corrected a transcription: keep it, re-chunk that page's section (they're
         waiting on it, so no background gates)."""
-        self.db.execute("UPDATE pages SET text = ?, method = 'edited' WHERE document_id = ? AND page_index = ?", (text, did, page_index))
-        await self.rechunk_section(did, page_index, foreground=True)
+        async with self.lock(did):
+            self.db.execute("UPDATE pages SET text = ?, method = 'edited' WHERE document_id = ? AND page_index = ?", (text, did, page_index))
+            await self.rechunk_section(did, page_index, foreground=True)
 
     async def rechunk_section(self, did: int, page_index: int, foreground: bool = False) -> None:
         """Re-chunk and re-embed only the section containing `page_index` (cheap)."""
@@ -438,7 +457,16 @@ class IngestService:
 
     async def repair_page(self, did: int, page_index: int, foreground: bool = False) -> str:
         """Vision-transcribe one page. foreground=True when a student is waiting on it (a
-        textbook lookup inside a tutor turn): no background gates, no waiting for idle."""
+        textbook lookup inside a tutor turn): no background gates, no waiting for idle, and if
+        the document is busy (being ingested) the current text is used instead of waiting."""
+        lock = self.lock(did)
+        if foreground and lock.locked():
+            row = self.db.one("SELECT text FROM pages WHERE document_id = ? AND page_index = ?", (did, page_index))
+            return row["text"] if row else ""
+        async with lock:
+            return await self._repair_page(did, page_index, foreground)
+
+    async def _repair_page(self, did: int, page_index: int, foreground: bool) -> str:
         doc = self.db.one("SELECT * FROM documents WHERE id = ?", (did,))
         sha, png = await self._run(pdf.page_image_hash, Path(doc["path"]), page_index)
         cached = self.db.one("SELECT text FROM transcriptions WHERE sha256 = ? AND model != 'apple-ocr'", (sha,))

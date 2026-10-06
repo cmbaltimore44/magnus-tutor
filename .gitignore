@@ -11,3 +11,4 @@ web/dist/
 bench/results/raw/
 .env
 web/*.tsbuildinfo
+.claude/

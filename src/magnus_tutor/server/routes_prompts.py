@@ -181,9 +181,14 @@ async def from_syllabus(request: Request, file: UploadFile | None = File(None)):
         data = await file.read()
         name = file.filename or "syllabus.pdf"
         if name.lower().endswith(".pdf"):
-            import pymupdf
+            import asyncio
 
-            text = "\n".join(pg.get_text() for pg in pymupdf.open(stream=data, filetype="pdf"))
+            from ..ingest.pdf import PdfWorkerError, text_of
+
+            try:
+                text = await asyncio.to_thread(text_of, data)  # parsed in the sandboxed PDF worker
+            except PdfWorkerError as e:
+                raise HTTPException(400, str(e))
         else:
             text = data.decode(errors="replace")
     else:
