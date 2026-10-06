@@ -120,7 +120,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     },
     "alerts": "auto",  # auto | terminal | web | both
     "appearance": {"theme": "heather", "mode": "auto"},
-    "cloud": {"enabled": False, "model": "claude-sonnet-5-5", "max_tokens": 4096},
+    "cloud": {"enabled": False, "model": "claude-opus-5-5", "max_tokens": 16000},
     "magnus": {"command": "magnus"},
 }
 

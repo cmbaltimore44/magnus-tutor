@@ -263,3 +263,33 @@ async def test_code_runs_are_ground_truth(p, fake_models):
     passing = failing.replace("FAIL (expected '0', got '1')", "PASS").replace("FAIL (expected '6', got '7')", "PASS").replace("= 1 |", "= 0 |")
     await run_turn(t, sid, "fixed it", code_context=passing)
     assert store.get_session(t.db, sid)["state"]["solved"] is True
+
+
+async def test_escalation_uses_cloud_and_keeps_the_gates(setup):
+    from conftest import FakeProvider
+
+    t, fp, course, _ = setup
+    sid = t.create_session(course.slug)
+    await run_turn(t, sid, PROBLEM)
+    set_reference(t, sid)
+    await run_turn(t, sid, "I'm stuck")
+    cloud = FakeProvider(lambda messages, **kw: "The answer is 674 N/C." if not any("IMPORTANT" in m["content"] for m in messages if m["role"] == "system") else "Which law relates field to a point charge?")
+    cloud.name, cloud.local, cloud.model = "anthropic", False, "claude-opus-5-5"
+    t.models.cloud = cloud
+    last = store.messages(t.db, sid)[-1]
+    events = [ev async for ev in t.escalate(sid, last["id"])]
+    reply = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "674" not in reply and any(e["type"] == "reset" for e in events), "the leak check applies to cloud replies too"
+    saved = store.messages(t.db, sid)[-1]
+    assert saved["meta"]["provider"] == "anthropic" and saved["meta"]["escalated_from"] == last["id"]
+    assert len(fp.calls) == 2, "the local model was not called again"
+    assert any("Hint level allowed this turn: 1 of 4" in m["content"] for m in cloud.calls[0]["messages"] if m["role"] == "system")
+
+
+def test_cloud_message_conversion():
+    from magnus_tutor.llm.cloud import to_anthropic
+
+    system, msgs = to_anthropic([{"role": "system", "content": "S1"}, {"role": "user", "content": "hi", "images": ["iVBORw0KGgoAAAANSUhEUg=="]},
+                                 {"role": "system", "content": "S2"}, {"role": "assistant", "content": "yo"}])
+    assert system == "S1\n\nS2"
+    assert msgs[0]["content"][0]["source"]["media_type"] == "image/png" and msgs[1]["role"] == "assistant"

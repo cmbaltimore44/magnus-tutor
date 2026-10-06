@@ -29,7 +29,7 @@ from ..llm.base import ProviderError
 from ..llm.manager import ModelManager
 from ..tools import mathcheck as M
 from . import intent as I
-from .ladder import LEVEL_NAMES, GateState, decide, new_problem_state
+from .ladder import LEVEL_INSTRUCTIONS, LEVEL_NAMES, GateState, decide, new_problem_state
 from .leak import SAFE_FALLBACK, LeakChecker, stricter_instruction
 
 HISTORY_MESSAGES = 14
@@ -95,6 +95,50 @@ class Tutor:
                     yield ev
         except ProviderError as e:
             yield {"type": "error", "message": str(e)}
+
+    async def escalate(self, sid: int, message_id: int) -> AsyncIterator[dict]:
+        """Redo one assistant reply with the cloud model: same history, same hint level,
+        same leak check. The new reply is stored after it and marked as cloud."""
+        msgs_all = store.messages(self.db, sid)
+        idx = next((i for i, m in enumerate(msgs_all) if m["id"] == message_id and m["role"] == "assistant"), None)
+        if idx is None or idx == 0:
+            yield {"type": "error", "message": "no such reply"}
+            return
+        user = msgs_all[idx - 1]
+        session = store.get_session(self.db, sid)
+        course = load_course(session["course"], self.p) if session["course"] else None
+        meta = msgs_all[idx]["meta"]
+        level = int(meta.get("hint_level", 4 if session["mode"] == "ask" else 0))
+        state = GateState.from_dict(session["state"])
+        problem = store.get_problem(self.db, state.problem_id)
+        reference = problem.get("reference_solution") if problem else None
+        passages = meta.get("sources") or []
+        if session["mode"] in ("office_hours", "code"):
+            state_vars = {
+                "problem": problem["text"] if problem else "", "attempt_status": "", "hint_level": str(level), "hint_level_name": LEVEL_NAMES[level],
+                "hint_instruction": LEVEL_INSTRUCTIONS[level],
+                "reference_solution": _reference_text(reference, level), "solution_confidence": (problem or {}).get("confidence") or "none", "verification_note": "",
+            }
+            sysmsg = system_prompt(session["mode"], course, passages=passages, state_vars=state_vars, p=self.p, overrides=self.overrides)
+        else:
+            sysmsg = system_prompt("ask", course, passages=passages, p=self.p, overrides=self.overrides)
+        history = [{"role": m["role"], "content": m["content"]} for m in msgs_all[: idx - 1] if m["role"] in ("user", "assistant")][-HISTORY_MESSAGES:]
+        msgs = [{"role": "system", "content": sysmsg}, *history, _user_msg(user["content"], user.get("images") or [], self.p)]
+        checker = LeakChecker(reference, problem["text"] if problem else "") if self.settings()["gates"].get("output_check", True) and level < 4 and session["mode"] != "ask" else None
+        yield {"type": "meta", "hint_level": level, "provider": "anthropic", "sources": passages}
+        reply, stats = "", {}
+        try:
+            async for ev in self._gated_stream("tutor", msgs, checker, level, "anthropic"):
+                if ev["type"] == "final":
+                    reply, stats = ev["text"], ev["stats"]
+                else:
+                    yield ev
+        except ProviderError as e:
+            yield {"type": "error", "message": str(e)}
+            return
+        mid = store.add_message(self.db, sid, "assistant", reply, None, {"hint_level": level, "stats": stats, "sources": passages, "provider": "anthropic",
+                                                                         "model": stats.get("model"), "escalated_from": message_id})
+        yield {"type": "done", "message_id": mid, "stats": stats}
 
     # --- office hours ------------------------------------------------------------------------
 
@@ -272,7 +316,7 @@ class Tutor:
                         yield {"type": "token", "text": full[released:cut]}
                         released = cut
                 if c.done:
-                    stats = {**c.stats, "model": self.models.last_stats.get("model")}
+                    stats = {**c.stats, "model": c.stats.get("model") or self.models.last_stats.get("model")}
             if not leaked and checker:
                 leaked = checker.check(full, level)
             if not leaked:

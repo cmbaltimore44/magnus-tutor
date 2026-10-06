@@ -17,3 +17,7 @@ def init_services(st) -> None:
     if "solver" not in st.extras:
         st.extras["solver"] = SolverService(st.p, st.db, st.models, lambda: st.settings, retriever=st.extras.get("retriever"), publish=bus.publish)
     st.extras.pop("tutor", None)  # rebuilt with the services on first use
+
+    from ..llm.cloud import configure_cloud
+
+    configure_cloud(st)

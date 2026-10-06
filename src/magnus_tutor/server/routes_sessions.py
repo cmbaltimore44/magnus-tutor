@@ -186,3 +186,45 @@ async def solve_problem(pid: int, request: Request):
         raise HTTPException(503, "solver unavailable")
     solver.start(pid)
     return {"ok": True}
+
+
+@router.post("/sessions/{sid}/escalate")
+async def escalate(sid: int, request: Request):
+    """Redo a reply with the optional cloud model (only when it's enabled)."""
+    s = st(request)
+    if not s.models.cloud:
+        raise HTTPException(400, "The cloud model is off. Turn it on in Settings first.")
+    body = await request.json()
+    t = tutor_for(s)
+
+    async def gen():
+        async for ev in t.escalate(sid, int(body["message_id"])):
+            yield _sse(ev)
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@router.post("/cloud/key")
+async def save_key(request: Request):
+    from ..llm.cloud import configure_cloud, set_api_key
+
+    key = (await request.json()).get("key", "").strip()
+    if not key.startswith("sk-ant-"):
+        raise HTTPException(400, "That doesn't look like an Anthropic API key (sk-ant-…).")
+    set_api_key(key)
+    configure_cloud(st(request))
+    return {"ok": True}
+
+
+@router.delete("/cloud/key")
+async def delete_key(request: Request):
+    from ..llm.cloud import configure_cloud, delete_api_key
+
+    delete_api_key()
+    s = st(request)
+    from ..config import save_settings
+
+    save_settings({"cloud": {"enabled": False}}, s.p)
+    s.reload_settings()
+    configure_cloud(s)
+    return {"ok": True}
