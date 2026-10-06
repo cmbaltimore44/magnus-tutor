@@ -23,7 +23,7 @@ def st(request: Request):
 def tutor_for(s) -> Tutor:
     t = s.extras.get("tutor")
     if t is None:
-        t = Tutor(s.p, s.db, s.models, lambda: s.settings, retriever=s.extras.get("retriever"), solver=s.extras.get("solver"))
+        t = Tutor(s.p, s.db, s.models, lambda: s.settings, retriever=s.extras.get("retriever"), solver=s.extras.get("solver"), ingest=s.extras.get("ingest"))
         s.extras["tutor"] = t
     return t
 

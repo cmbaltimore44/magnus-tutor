@@ -21,6 +21,8 @@ dependencies = [
   "sqlite-vec>=0.1.6",
   "python-multipart>=0.0.9",
   "antlr4-python3-runtime==4.11.*",
+  "pymupdf4llm>=0.0.17",
+  "ocrmac>=1.0; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]

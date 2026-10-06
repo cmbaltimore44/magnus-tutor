@@ -16,7 +16,7 @@ MAGNUS = Path(os.environ.get("MAGNUS_REPO_FOR_TESTS", Path(__file__).resolve().p
 
 def _magnus_bin() -> Path | None:
     for cand in [os.environ.get("MAGNUS_TIMER_BIN"), MAGNUS / "bin" / "magnus.js"]:
-        if cand and Path(cand).exists() and "timer" in (Path(cand).parent.parent / "src" / "subcommands.js").read_text():
+        if cand and Path(cand).exists() and "runTimer" in (Path(cand).parent.parent / "src" / "subcommands.js").read_text():
             return Path(cand)
     return None
 

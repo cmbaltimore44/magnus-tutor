@@ -102,6 +102,28 @@ def ensure_ollama(settings: dict | None = None, p: Paths | None = None) -> dict:
     return {"running": False, "managed": True, "error": "ollama serve didn't come up (see run/ollama.log)"}
 
 
+class OllamaFor:
+    """`with OllamaFor(settings):` for CLI commands: start Ollama if needed, and if we
+    started it, unload models and stop it again on the way out."""
+
+    def __init__(self, settings: dict | None = None, p: Paths | None = None):
+        self.p = p or paths()
+        self.settings = settings or load_settings(self.p)
+        self.started = False
+        self.info: dict = {}
+
+    def __enter__(self) -> dict:
+        was_up = ollama_up(self.settings["ollama"]["host"])
+        self.info = ensure_ollama(self.settings, self.p)
+        self.started = self.info.get("running", False) and not was_up
+        return self.info
+
+    def __exit__(self, *exc) -> None:
+        if self.started and not server_up(self.settings):
+            unload_models(self.settings["ollama"]["host"])
+            stop_ollama(self.p)
+
+
 def unload_models(host: str) -> list[str]:
     try:
         ps = httpx.get(f"{host}/api/ps", timeout=3).json().get("models", [])

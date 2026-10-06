@@ -112,6 +112,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     },
     "background": {"only_when_plugged_in": True, "paused": False},
     "cache": {"max_mb": 2048},
+    "ingest": {
+        "confirm_over_pages": 10,  # ask before transcribing more handwritten pages than this
+        "seconds_per_vision_page": 20,  # for the time estimate (measured ~15 s/page on this Mac)
+        "batch_pause_s": 0.3,  # breathe between batches so the laptop stays cool
+        "auto_repair": True,  # vision-repair equations on cited textbook pages when idle + plugged in
+    },
     "alerts": "auto",  # auto | terminal | web | both
     "appearance": {"theme": "heather", "mode": "auto"},
     "cloud": {"enabled": False, "model": "claude-sonnet-5-5", "max_tokens": 4096},

@@ -405,3 +405,32 @@ pre.err { color: var(--danger); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* library */
+.library .section-head { margin-bottom: 4px; }
+.search-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 18px 0; }
+.search-row input { flex: 1; border: 0; background: transparent; font-size: 15px; }
+.search-row input:focus { box-shadow: none; }
+.results { list-style: none; padding: 0; margin: 0 0 30px; display: grid; gap: 10px; }
+.res-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; font-size: 13px; }
+.res-text { font-size: 14.5px; color: var(--text); }
+.lib-course { margin: 28px 0; }
+.lib-course h2 .small { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 6px; }
+.docs { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.docs td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.docs tr:last-child td { border-bottom: 0; }
+.doc-kind { width: 30px; color: var(--muted); }
+.doc-title { font-weight: 500; color: var(--text); text-align: left; }
+.doc-status { width: 150px; }
+.doc-status .bar { margin-top: 4px; }
+.doc-actions { width: 1%; white-space: nowrap; text-align: right; }
+.status.s-done { color: var(--success); }
+.status.s-needs_confirmation { color: var(--warning); font-weight: 500; }
+.folders { margin-top: 8px; display: grid; gap: 2px; }
+.viewer-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.viewer-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-height: 70vh; }
+.viewer-body .page-img { max-height: 70vh; object-fit: contain; }
+.viewer-text { overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.viewer-text textarea { flex: 1; min-height: 50vh; font: 13px/1.5 var(--font-mono); }
+.m-edited { color: var(--success); }
+.m-embedded-gaps { color: var(--warning); }

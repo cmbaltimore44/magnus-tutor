@@ -1,0 +1,38 @@
+# Retrieval eval: questions with the section (or printed page) that answers them.
+# Draft built on OpenStax University Physics Vol. 2, chapters 5-7 (E&M). Replace or
+# extend with questions about your own notes and textbooks once they're ingested.
+# expect: section numbers ("6.3") or pages ("p. 245"); a hit is any expected item in the top k.
+course: em
+k: 5
+questions:
+  - {q: "What is the difference between a conductor and an insulator?", expect: ["5.2"]}
+  - {q: "How does charging by induction work?", expect: ["5.2"]}
+  - {q: "Is electric charge quantized?", expect: ["5.1"]}
+  - {q: "What does conservation of charge mean?", expect: ["5.1"]}
+  - {q: "State Coulomb's law", expect: ["5.3"]}
+  - {q: "How do forces from several point charges combine?", expect: ["5.3", "5.4"]}
+  - {q: "What is the definition of the electric field?", expect: ["5.4"]}
+  - {q: "Electric field of a point charge", expect: ["5.4"]}
+  - {q: "Field of a uniformly charged ring on its axis", expect: ["5.5"]}
+  - {q: "Field of an infinite plane of charge", expect: ["5.5", "6.3"]}
+  - {q: "How do you draw electric field lines?", expect: ["5.6"]}
+  - {q: "What is an electric dipole moment?", expect: ["5.7"]}
+  - {q: "Torque on a dipole in a uniform field", expect: ["5.7"]}
+  - {q: "What is electric flux?", expect: ["6.1"]}
+  - {q: "Flux through a closed surface", expect: ["6.1", "6.2"]}
+  - {q: "Why does the flux through a closed surface depend only on enclosed charge?", expect: ["6.2"]}
+  - {q: "How do I choose a Gaussian surface?", expect: ["6.3"]}
+  - {q: "Field inside a uniformly charged solid sphere", expect: ["6.3"]}
+  - {q: "Field of an infinitely long charged cylinder using Gauss's law", expect: ["6.3"]}
+  - {q: "Why is the electric field zero inside a conductor?", expect: ["6.4"]}
+  - {q: "Where does excess charge go on a conductor?", expect: ["6.4"]}
+  - {q: "Field just outside the surface of a conductor", expect: ["6.4"]}
+  - {q: "What is electric potential energy?", expect: ["7.1"]}
+  - {q: "Potential energy of a system of point charges", expect: ["7.1"]}
+  - {q: "Difference between electric potential and potential energy", expect: ["7.2"]}
+  - {q: "What is an electron-volt?", expect: ["7.2"]}
+  - {q: "Potential of a point charge", expect: ["7.3"]}
+  - {q: "Potential of a charged ring or disk", expect: ["7.3"]}
+  - {q: "How do you get the electric field from the potential (gradient)?", expect: ["7.4"]}
+  - {q: "What are equipotential surfaces?", expect: ["7.5"]}
+  - {q: "How does a Van de Graaff generator work?", expect: ["7.6"]}

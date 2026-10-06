@@ -431,6 +431,11 @@ def regrade() -> int:
 
 
 def run(a) -> int:
+    with runtime.OllamaFor():
+        return _run(a)
+
+
+def _run(a) -> int:
     s = load_settings()
     models = a.models or [s["models"]["tutor"]]
     if a.action == "run":

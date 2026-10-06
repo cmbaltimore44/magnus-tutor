@@ -56,11 +56,13 @@ class Tutor:
         *,
         retriever=None,
         solver=None,
+        ingest=None,
         overrides: dict | None = None,
     ):
         self.p, self.db, self.models, self.settings = p, db, models, settings
         self.retriever = retriever
         self.solver = solver
+        self.ingest = ingest
         self.overrides = overrides  # unsaved prompt drafts (prompt tester)
 
     # --- public API -------------------------------------------------------------------------
@@ -102,6 +104,7 @@ class Tutor:
         state = GateState.from_dict(session["state"])
         problem = store.get_problem(self.db, state.problem_id)
         first_turn = False
+        looked_up = None
 
         user_text = text
         if action == "unlock_now":
@@ -121,13 +124,19 @@ class Tutor:
         # A new problem: the first message of a session, an explicit "new problem", or the button.
         if problem is None or action == "new_problem" or intent.kind == "new_problem":
             problem_text = I._NEW_PROBLEM.sub("", user_text).strip(" :.-") if intent.kind == "new_problem" else user_text
+            source = "pasted"
+            looked_up = await self._lookup_exercise(course, problem_text)
+            if looked_up:
+                yield {"type": "status", "message": f"Found {looked_up['label']}"}
+                problem_text = looked_up["text"]
+                source = looked_up["label"]
             if images and len(problem_text) < 40:
                 yield {"type": "status", "message": "Reading the problem from your image…"}
                 transcribed = await self._transcribe(images[0], TRANSCRIBE_PROBLEM)
                 problem_text = (problem_text + "\n\n" + transcribed).strip() if transcribed else problem_text
             kind = _problem_kind(course, session["mode"], problem_text)
             run_solver = self.solver is not None and kind != "writing" and self.settings()["solver"].get("enabled", True)
-            pid = store.create_problem(self.db, session["course"], problem_text, kind=kind, status="pending" if run_solver else "skipped")
+            pid = store.create_problem(self.db, session["course"], problem_text, source=source, kind=kind, status="pending" if run_solver else "skipped")
             store.start_attempt(self.db, sid, pid, session["course"])
             state = new_problem_state(pid)
             problem = store.get_problem(self.db, pid)
@@ -172,6 +181,9 @@ class Tutor:
         level = decision.allowed_level
 
         passages = await self._retrieve(course, problem["text"] if problem else user_text, user_text)
+        if looked_up:
+            passages.insert(0, {"label": looked_up["label"], "document_id": looked_up["document_id"], "page_index": looked_up["page_index"],
+                                "printed_page": looked_up["printed_page"], "text": looked_up["text"], "kind": "textbook"})
         ref_text = _reference_text(reference, level)
         state_vars = {
             "problem": problem["text"] if problem else "",
@@ -287,9 +299,28 @@ class Tutor:
             return []
         try:
             q = query if len(query) > 30 else f"{problem_text}\n{query}"
-            return await self.retriever.search(q, course=course.slug if course else None, k=5)
+            passages = await self.retriever.search(q, course=course.slug if course else None, k=4)
         except Exception:
             return []
+        if self.ingest:
+            # Cited textbook pages whose equations dropped out get repaired in the background.
+            for ps in passages[:3]:
+                if ps.get("kind") == "textbook":
+                    self.ingest.request_repair(ps["document_id"], ps["page_index"])
+        return passages
+
+    async def _lookup_exercise(self, course: Course | None, text: str) -> dict | None:
+        if not self.ingest or len(text) > 160:
+            return None
+        from ..ingest.exercises import parse_lookup
+
+        ref = parse_lookup(text)
+        if not ref:
+            return None
+        try:
+            return await self.ingest.lookup_exercise(course.slug if course else None, ref[0], ref[1])
+        except Exception:
+            return None
 
     async def _transcribe(self, upload_id: str, instruction: str) -> str:
         b64 = store.image_b64(self.p, upload_id)

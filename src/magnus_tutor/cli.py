@@ -103,15 +103,19 @@ def cmd_hardware(a) -> int:
 
 def cmd_chat(a) -> int:
     bootstrap()
+    p = paths()
+    settings = load_settings(p)
+    with runtime.OllamaFor(settings, p) as o:
+        if not o["running"]:
+            print(f"tutor: {o.get('error')}", file=sys.stderr)
+            return 1
+        return _chat(a, p, settings)
+
+
+def _chat(a, p, settings) -> int:
     from .context import system_prompt
     from .llm.manager import ModelManager
 
-    p = paths()
-    settings = load_settings(p)
-    o = runtime.ensure_ollama(settings, p)
-    if not o["running"]:
-        print(f"tutor: {o.get('error')}", file=sys.stderr)
-        return 1
     course = C.load_course(a.course, p) if a.course else None
     if a.course and not course:
         print(f"tutor: no course '{a.course}' (see `tutor course list`)", file=sys.stderr)
@@ -202,6 +206,7 @@ def cmd_languages(a) -> int:
 def cmd_ingest(a) -> int:
     from .ingest.cli import run
 
+    a.course = a.course or a.course_opt
     return run(a)
 
 
@@ -308,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("ingest", help="ingest course materials (notes, textbooks)")
     s.add_argument("course", nargs="?")
+    s.add_argument("--course", dest="course_opt")
     s.add_argument("--file")
     s.add_argument("--yes", action="store_true", help="confirm large vision jobs")
     s.add_argument("--status", action="store_true")

@@ -20,13 +20,19 @@ def base_variables(course: Course | None, p: Paths | None = None) -> dict[str, s
     }
 
 
+PASSAGE_CHARS = 900
+
+
 def format_sources(passages: list[dict]) -> str:
     """Retrieved passages as a numbered block with citation labels."""
     if not passages:
         return "(No matching passages in the student's notes or textbooks.)"
     out = []
     for i, ps in enumerate(passages, 1):
-        out.append(f"[S{i}] {ps['label']}\n{ps['text'].strip()}")
+        text = ps["text"].strip()
+        if len(text) > PASSAGE_CHARS:  # long passages slow the first token; keep the start
+            text = text[:PASSAGE_CHARS].rsplit(" ", 1)[0] + " …"
+        out.append(f"[S{i}] {ps['label']}\n{text}")
     return "\n\n".join(out)
 
 
