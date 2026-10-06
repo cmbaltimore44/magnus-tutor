@@ -155,3 +155,21 @@ async def test_removing_a_file_forgets_its_derived_data(svc, p):
     f.unlink()
     assert s.remove_missing() == [did]
     assert db.one("SELECT COUNT(*) AS n FROM chunks")["n"] == 0
+
+
+async def test_interrupted_embeddings_resume(svc, p):
+    import asyncio
+
+    s, fp, db = svc
+    c = C.create_course("E&M", p=p)
+    make_textbook(c.folder("textbooks") / "book.pdf")
+    [did] = s.scan()
+    await s.process(did)
+    db.execute("UPDATE chunks SET embedding = NULL WHERE id % 2 = 0")  # as if a run stopped halfway
+    s.kick()
+    for _ in range(100):
+        if not db.one("SELECT 1 FROM chunks WHERE embedding IS NULL"):
+            break
+        await asyncio.sleep(0.02)
+    assert not db.one("SELECT 1 FROM chunks WHERE embedding IS NULL")
+    s.task.cancel()

@@ -158,6 +158,16 @@ class IngestService:
             if doc:
                 await self._process_safe(doc["id"])
                 continue
+            unembedded = self.db.one("SELECT document_id FROM chunks WHERE embedding IS NULL LIMIT 1")
+            if unembedded:
+                # Resume embeddings an interrupted run left unfinished.
+                try:
+                    await self.embed_missing(unembedded["document_id"])
+                    self.db.update("documents", unembedded["document_id"], status="done", progress=1.0, updated_at=now())
+                    self._publish_doc(unembedded["document_id"])
+                except Preempted:
+                    pass
+                continue
             job = self.db.one("SELECT * FROM jobs WHERE kind = 'repair' AND status = 'queued' ORDER BY id LIMIT 1")
             if job and self.cfg()["auto_repair"]:
                 await self._repair_job(job)

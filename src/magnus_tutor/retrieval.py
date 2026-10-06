@@ -72,7 +72,12 @@ class Retriever:
     def store_embedding(self, chunk_id: int, course: str, blob: bytes) -> None:
         self.db.execute("UPDATE chunks SET embedding = ? WHERE id = ?", (blob, chunk_id))
         if self.vec and self.dim and len(blob) == self.dim * 4:
-            self.db.execute("INSERT OR REPLACE INTO chunk_vec(chunk_id, course, embedding) VALUES (?, ?, ?)", (chunk_id, course, blob))
+            self._vec_put(chunk_id, course, blob)
+
+    def _vec_put(self, chunk_id: int, course: str, blob: bytes) -> None:
+        # vec0 tables don't support INSERT OR REPLACE.
+        self.db.execute("DELETE FROM chunk_vec WHERE chunk_id = ?", (chunk_id,))
+        self.db.execute("INSERT INTO chunk_vec(chunk_id, course, embedding) VALUES (?, ?, ?)", (chunk_id, course, blob))
 
     async def embed_chunks(self, rows: list[dict]) -> None:
         """rows: [{id, course, text, section_path}] → embeddings stored."""
@@ -89,7 +94,7 @@ class Retriever:
             blob = np.asarray(v, dtype=np.float32).tobytes()
             self.db.execute("UPDATE chunks SET embedding = ? WHERE id = ?", (blob, r["id"]))
             if self.vec:
-                self.db.execute("INSERT OR REPLACE INTO chunk_vec(chunk_id, course, embedding) VALUES (?, ?, ?)", (r["id"], r["course"], blob))
+                self._vec_put(r["id"], r["course"], blob)
 
     # --- search -------------------------------------------------------------------------------
 
