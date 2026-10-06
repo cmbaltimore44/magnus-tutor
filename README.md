@@ -1,10 +1,10 @@
 # Magnus Tutor
 
-A free, local, Socratic study tutor that lives alongside [Magnus](../magnus).
-It knows who you are, what courses you're taking, and what's in your notes and
-textbooks. It acts like a professor in office hours, not a solver. Models run
-on this Mac through [Ollama](https://ollama.com); nothing leaves the machine
-unless you turn on the optional cloud model and escalate a specific reply.
+A free, local, Socratic study tutor for your own courses. It knows what you're
+taking and what's in your notes and textbooks, and it acts like a professor in
+office hours, not an answer machine. Models run on your Mac through
+[Ollama](https://ollama.com); nothing leaves the machine unless you turn on the
+optional cloud model and escalate a specific reply.
 
 - **Office hours** for problem sets: asks for your attempt first, hints one
   level at a time, and checks your answer with real math (SymPy, units, code
@@ -18,25 +18,40 @@ unless you turn on the optional cloud model and escalate a specific reply.
   Dockerfile/Kubernetes checks; debugging help teaches how to find the bug.
 - **Writing coach** for writing courses: questions about your thesis and
   sources, never ghostwriting.
-- **Focus timer** from Magnus, visible on every screen (one shared timer).
+- **Focus timer** (optional) shared with Magnus, a terminal companion app.
+
+## Requirements
+
+- **macOS on Apple Silicon.** The code sandbox uses `sandbox-exec`, scanned
+  pages use macOS Vision OCR, and the optional API key lives in the Keychain.
+- **16 GB of RAM or more** is recommended for the default models; there's a
+  Light preset for smaller machines (see [Models and resources](#models-and-resources)).
+- [Ollama](https://ollama.com), [uv](https://docs.astral.sh/uv/), Node.js (to build the web app).
+- Python 3.12 (uv installs it for you if needed).
+- Optional, for the code workspace: the toolchains for the languages you
+  want to run (e.g. SML/NJ, a JDK, Ruby).
 
 ## Quick start
 
 ```sh
-cd ~/Development/magnus-tutor
-uv sync --extra dev                                   # once (exact versions from uv.lock)
-(cd web && npm install && npm run build)               # once, and after UI changes
-.venv/bin/tutor start        # starts the backend (+ Ollama if needed), opens the web app
-.venv/bin/tutor stop         # stops everything and unloads models
-.venv/bin/tutor doctor       # shows nothing is left running
+git clone https://github.com/cmbaltimore44/magnus-tutor.git
+cd magnus-tutor
+uv sync                                  # exact versions from uv.lock
+(cd web && npm install && npm run build) # once, and after UI changes
+.venv/bin/tutor init                     # config folders, default prompts, hardware check
+.venv/bin/tutor models pull …            # pull the recommended models (shows sizes, asks first)
+.venv/bin/tutor start                    # starts the backend (+ Ollama if needed), opens the web app
 ```
 
-From Magnus: `o` opens the Tutor section, or use the palette (*Tutor: …*), or
-`magnus tutor` / `magnus tutor ask "…" --course em` in a shell.
+```sh
+.venv/bin/tutor stop       # stops everything and unloads models
+.venv/bin/tutor doctor     # shows what's running, loaded, and on disk
+.venv/bin/tutor --help     # chat, course, ingest, prompts, models, languages, bench, …
+```
 
-The backend only runs when you start it, stops itself after 30 idle minutes
-(an open, visible tab counts as use), and installs no launch agents, login
-items or cron jobs.
+The web app is served on `http://127.0.0.1:8765`. The backend only runs when
+you start it, stops itself after 30 idle minutes (an open, visible tab counts
+as use), and installs no launch agents, login items or cron jobs.
 
 ## Your setup
 
@@ -49,26 +64,23 @@ items or cron jobs.
 | Settings | `~/.config/magnus-tutor/settings.yaml` (only your overrides), or the Settings page |
 | Generated data (SQLite, page cache) | `~/.local/share/magnus-tutor/` |
 
-Courses for Fall 2026 are set up: `qm` Introduction to Quantum Physics,
-`em` Electricity and Magnetism, `psl` Programming Systems and Languages (SML),
-`cloud` Cloud Computing with Big Data Applications, `mhh` Magicians, Healers,
-and Holy Men (writing coach). Course codes and instructors are blank; fill
-them in on each course page (*Edit course*) or in the YAML.
+**Adding courses:** *New course* (Home or ⌘K) reads a syllabus and proposes
+the course (title, code, topics, languages, notation conventions); you can
+also use `tutor course add`. At the end of a term, the same page archives
+last term's courses in one click. Archived courses stay searchable ("all
+courses, incl. archived" in the Library).
 
 **Materials folders** (read in place, never copied; the backend watches them):
 
 ```
-~/Documents/Magnus/notes/<course>/       ← export GoodNotes notebooks here as PDF
+~/Documents/Magnus/notes/<course>/       ← handwritten notes exported as PDF
 ~/Documents/Magnus/textbooks/<course>/   ← textbook PDFs
 ~/Documents/Magnus/other/<course>/       ← syllabus, slides, problem sets
 ```
 
-In GoodNotes: *Share → Export → PDF → Save to Files → Documents/Magnus/notes/em*.
-With *Desktop & Documents* in iCloud, exports from the iPad land there too.
-
-**New semester:** *New course* (Home or ⌘K) reads a syllabus and proposes the
-course; the same page archives last term's courses in one click. Archived
-courses stay searchable ("all courses, incl. archived" in the Library).
+Notes apps like GoodNotes can export straight there (*Share → Export → PDF →
+Save to Files*). With *Desktop & Documents* in iCloud, exports from an iPad
+land there too.
 
 ## How it works
 
@@ -102,7 +114,8 @@ common mistakes, checks), and the answer is verified:
 - **math:** the solver's declarative checks evaluated with SymPy (no code is
   executed): numeric recomputation, derivatives, integrals, solve, limits;
 - **physics:** dimensional analysis with `pint` from a symbol→unit map, plus sanity checks;
-- **code:** the reference program runs in the sandbox against its tests.
+- **code:** the reference program runs in the sandbox against its tests
+  (only if you turn that on in Settings).
 
 Confidence is **verified** (a check reproduced the final answer and nothing
 failed), **agreed** (independent runs agree), or **uncertain** (the tutor says
@@ -120,9 +133,10 @@ Text comes from three tiers, cheapest first:
    draw math as glyphs with no text, so extraction reads "a surface of area
    that is perpendicular"; OCR recovers inline symbols and values;
 3. the **vision model** for handwritten notes (asks first when a notebook has
-   more than 10 handwritten pages, with a time estimate; ~15 s/page here) and
-   for *equation repair* of textbook pages you actually cite (queued, only when
-   idle and plugged in). Transcriptions are cached by page-image hash and never redone.
+   more than 10 handwritten pages, with a time estimate; ~15 s/page on an M5)
+   and for *equation repair* of textbook pages you actually cite (queued, only
+   when idle and plugged in). Transcriptions are cached by page-image hash and
+   never redone.
 
 Textbooks are chunked by section using the PDF bookmarks, with the heading
 path and the printed page number (inferred from page headers when the PDF has
@@ -132,7 +146,7 @@ problem 12" pulls the exact problem (reading that page properly if symbols are
 missing). You can fix any transcription in the Library against the page image.
 
 *Why not Marker?* It needs PyTorch and several GB of models and is slow
-without a big GPU; on this Mac the OCR tier recovers most of what plain
+without a big GPU; on a laptop the OCR tier recovers most of what plain
 extraction drops at a tiny fraction of the cost, and the vision model handles
 the rest only where it matters.
 
@@ -146,29 +160,37 @@ Runs in a temp folder under a macOS `sandbox-exec` profile (no network, no
 reading your home folder or /Volumes, writes only inside the temp folder, no
 forking unless a language sets `allow_fork: true`) with CPU, file size and
 open-file limits, and a watchdog that kills the run on timeout or memory over
-512 MB. Python runs in the
-sandbox's own venv, never the tutor's. Code the tutor suggests opens in the
-editor (*Open in editor*) and runs only when you press Run.
+512 MB. Python runs in the sandbox's own venv, never the tutor's. Code the
+tutor suggests opens in the editor (*Open in editor*) and runs only when you
+press Run.
 
 Languages live in `~/.config/magnus-tutor/languages.yaml`. To add one:
 install the toolchain, copy an entry (extensions, `run` or `check` command,
 editor highlight, hello program), add it to the course's `languages:`, and
-run `tutor languages check`. Ruby uses Homebrew's Ruby by full path
-(`/opt/homebrew/opt/ruby/bin/ruby`, unlinked so your shell's `ruby` is unchanged).
+run `tutor languages check`. A command can use a full path, so a toolchain
+doesn't have to be on your `PATH`: the default Ruby entry uses Homebrew's
+unlinked Ruby (`/opt/homebrew/opt/ruby/bin/ruby`), leaving your shell's `ruby` unchanged.
 
 ## Models and resources
 
-**This Mac:** `sysctl` reports **Apple M5** (10-core CPU, 10-core GPU) with 24 GB,
-not an M5 Pro. Measured numbers below are for this machine with your usual apps
-open (about 15 GB of RAM already in use before the tutor starts).
+`tutor init` (or `tutor hardware`) checks your chip and RAM and recommends a
+preset:
 
-Defaults (Standard preset), chosen from the benchmark below:
+- **Light:** `qwen3.5:4b` everywhere, solver only on demand.
+- **Standard** (default):
+  - **`qwen3.5:9b`** for tutor, solver and vision (thinking off for tutor
+    turns, on with a ~2,500-token budget for the hidden solver);
+  - **`qwen2.5-coder:7b`** for code turns, loaded only when needed (the 9B
+    model is unloaded first, so they're never in memory together);
+  - **`qwen3-embedding:0.6b`** for retrieval.
+- **Full:** separate models per role and 3 solver runs; needs a lot more RAM.
 
-- **`qwen3.5:9b`**: tutor, solver and vision (thinking off for tutor turns, on
-  with a ~2,500-token budget for the hidden solver);
-- **`qwen2.5-coder:7b`**: code turns, loaded only when needed (the 9B model is
-  unloaded first, so they're never in memory together);
-- **`qwen3-embedding:0.6b`**: retrieval.
+Any role can be pointed at another Ollama model in Settings. Models are only
+ever pulled after showing their size. Settings shows what's loaded, RAM, and
+background jobs, with *Unload models now* and *Pause all background work*;
+heavy jobs run only when plugged in (default on).
+
+### Measured on an Apple M5 with 24 GB (other apps using ~15 GB)
 
 | Model | Resident | Speed | Answers right, no thinking (math/physics + code) | Code problems |
 |---|---|---|---|---|
@@ -176,55 +198,56 @@ Defaults (Standard preset), chosen from the benchmark below:
 | qwen2.5-coder:7b | 4.6 GB | 26 tok/s | – | **11/12** |
 | qwen3.5:4b | 3.1 GB | 37 tok/s | 4/14 (partial run) | – |
 | qwen3:14b / deepseek-r1:14b | 9.3–9.4 GB | 13 tok/s | not run: too slow, pushed swap to 3.7 GB | – |
-| gemma4:12b | 8 GB | 22 tok/s | not run: over the memory budget with your usual apps | – |
+| gemma4:12b | 8 GB | 22 tok/s | not run: over the memory budget | – |
 
 A tutor reply while the hidden solver is mid-pass: **65 s** to the first word
 if both go straight to Ollama, **0.16 s** with the solver yielding (the default
-policy), the same as with no solver running. The rejected models were deleted
-after testing. Full numbers: `bench/results/REPORT.md`.
+policy), the same as with no solver running. Full numbers:
+[`bench/results/REPORT.md`](bench/results/REPORT.md).
 
 | | Measured |
 |---|---|
 | Idle, tutor stopped | nothing running, no model memory (`tutor doctor`) |
 | Backend running, no model loaded | ~70–90 MB |
-| During a session (model loaded) | tutor + Ollama ~6.7 GB; system ~20 of 24 GB in use; CPU peaks ~80% of one core while generating |
+| During a session (model loaded) | tutor + Ollama ~6.7 GB; CPU peaks ~80% of one core while generating |
 | After the keep-alive (3 min) | model unloaded automatically, memory back to baseline |
 | After `tutor stop` | no tutor or Ollama processes, no login items/launch agents/cron |
 | Retrieval | ~25 ms median |
 | Warm reply | ~21 tokens/s; first token ~1–3 s without sources, ~3–7 s with retrieved passages |
 | Textbook ingestion | ~2 min for 156 pages (one-time, background priority) |
 
-Presets: **Light** (`qwen3.5:4b` everywhere, solver only on demand),
-**Standard** (default), **Full** (separate models, 3 solver runs; needs much
-more RAM than this Mac has free). 14B models were tested and rejected: half the
-speed and swap pressure here. Settings shows what's loaded, RAM, and background
-jobs; *Unload models now*; *Pause all background work*; heavy jobs only when
-plugged in (default on). Models are only ever pulled after showing their size.
+**Benchmarks:** `tutor bench run|latency|concurrency|retrieval|report`. The
+problem set (`bench/problems.yaml`, 32 E&M, quantum, SML and cloud problems
+with answers verified in SymPy) and the retrieval set (`bench/retrieval.yaml`,
+built on [OpenStax *University Physics Vol. 2*](https://openstax.org/details/books/university-physics-volume-2))
+are starting points; replace or extend them with problems from your own
+courses to pick models for your machine.
 
-Benchmarks: `tutor bench run|latency|concurrency|retrieval|report` (set in
-`bench/problems.yaml` and `bench/retrieval.yaml`; results in `bench/results/`).
-The problem set is a **draft for you to check**: 32 problems drafted from your
-courses with hand-computed answers verified in SymPy.
+## Optional: Magnus integration
 
-## Magnus integration
+Magnus Tutor was built alongside Magnus, a personal terminal companion app.
+Everything above works without it; the header timer just shows
+*timer offline*.
 
-- **Timer:** Magnus owns the one focus timer, now stored in
-  `~/.config/magnus/timer.json` (contract: [docs/timer-contract.md](docs/timer-contract.md)).
-  The tutor shows it in the header pill and tab title, and controls it via
-  `magnus timer …`; it never writes the file or `focus_sessions`, so minutes
-  are logged once, by Magnus. Phase-end alerts: Settings → Focus timer
-  (auto: the terminal rings if Magnus is open, otherwise the browser).
-- **Tutor section** (`o` from Home) and palette actions; `magnus tutor`.
-- These Magnus changes are merged into Magnus `main` (no Supabase schema
-  changes; Life Tracker is untouched). Magnus tests: 74 passing.
+With Magnus installed, Magnus owns the one focus timer, stored in
+`~/.config/magnus/timer.json` (contract: [docs/timer-contract.md](docs/timer-contract.md)).
+The tutor shows it in the header pill and tab title and controls it through
+`magnus timer …` (set `magnus.command` in `settings.yaml` if it isn't on your
+`PATH`). It never writes the timer file itself, so focus minutes are logged
+once, by Magnus. Phase-end alerts: Settings → Focus timer. The timer contract
+is small and documented, so another timer app could implement it too.
 
 ## Optional cloud model
 
 Off by default. Save an Anthropic API key (Settings; stored in the macOS
 Keychain), enable it, and an *escalate* link appears on replies. Only the
-replies you escalate go to Anthropic (`claude-opus-5-5`, with the server-side
-refusal fallback enabled), with the same hint gates and leak check; they're
-marked with a cloud badge, and the header shows *cloud on* while enabled.
+replies you escalate are sent to Anthropic (`claude-opus-5-5`), along with the
+context that reply was built from: the system prompt (including your *About
+you* profile and the course details), recent conversation history, any images
+you attached, the retrieved passages from your materials, and in office
+hours the problem and the solver's reference solution. Escalated replies go through the same hint
+gates and leak check, are marked with a cloud badge, and the header shows
+*cloud on* while it's enabled.
 
 ## Security model
 
@@ -247,14 +270,18 @@ key lives in the Keychain and is passed to `security` on stdin.
 ## Development
 
 ```sh
-.venv/bin/pytest -q                       # backend tests (fake model; no GPU)
-MAGNUS_TIMER_BIN=…/magnus/bin/magnus.js .venv/bin/pytest tests/test_timer_bridge.py   # against Magnus's timer
+uv sync --extra dev
+.venv/bin/pytest -q                        # backend tests (fake model; no GPU)
+MAGNUS_TIMER_BIN=…/magnus/bin/magnus.js .venv/bin/pytest tests/test_timer_bridge.py   # against a real Magnus timer
 cd web && npm run dev                      # UI with hot reload (proxy to :8765); start the backend with
                                            #   MAGNUS_TUTOR_DEV_ORIGIN=1 so it accepts the dev server's origin
-node scripts/build-themes.mjs              # regenerate themes from Magnus's terminal themes
 MAGNUS_TUTOR_HOME=/tmp/x .venv/bin/tutor … # use a throwaway config/data dir
 MAGNUS_TUTOR_NO_MANAGE=1                   # backend doesn't start/stop Ollama (dev)
 ```
+
+The color themes in `web/src/styles/themes.css` are generated from Magnus's
+terminal themes by `scripts/build-themes.mjs` and committed, so building the
+app doesn't need Magnus.
 
 Layout: `src/magnus_tutor/` (engine/, ingest/, llm/, server/, tools/, prompts/defaults/),
 `web/` (React + Vite + TypeScript, KaTeX, CodeMirror), `bench/`, `docs/`, `tests/`.
