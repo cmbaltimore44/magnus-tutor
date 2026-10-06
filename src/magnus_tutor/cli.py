@@ -314,11 +314,13 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_ingest)
 
     s = sub.add_parser("bench", help="benchmark models on the eval set")
-    s.add_argument("action", choices=["run", "report", "latency", "concurrency", "retrieval"], nargs="?", default="run")
+    s.add_argument("action", choices=["run", "report", "latency", "concurrency", "retrieval", "regrade"], nargs="?", default="run")
     s.add_argument("--models", nargs="*")
     s.add_argument("--roles", nargs="*")
     s.add_argument("--limit", type=int)
     s.add_argument("--samples", type=int, default=1)
+    s.add_argument("--ids", nargs="*", help="only these problem ids")
+    s.add_argument("--cooldown", type=float, default=0, help="seconds to pause between problems (keeps the laptop cool)")
     s.set_defaults(fn=cmd_bench)
 
     a = ap.parse_args(argv)

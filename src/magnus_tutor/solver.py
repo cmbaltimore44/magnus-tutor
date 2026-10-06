@@ -101,8 +101,28 @@ class SolverService:
         if self.worker is None or self.worker.done():
             self.worker = asyncio.get_event_loop().create_task(self._work())
 
+    def _may_run(self) -> str | None:
+        """Why background solving should wait right now (paused, or on battery), else None."""
+        bg = self.settings().get("background", {})
+        if bg.get("paused"):
+            return "background work is paused"
+        if bg.get("only_when_plugged_in", True):
+            from .hardware import on_battery
+
+            if on_battery():
+                return "on battery"
+        return None
+
     async def _work(self) -> None:
         while not self.queue.empty():
+            reason = self._may_run()
+            if reason:
+                for pid in list(self.queue._queue):  # type: ignore[attr-defined]
+                    self.db.execute("UPDATE problems SET solver_status = 'skipped', solver_meta = ? WHERE id = ?", (json.dumps({"error": f"waiting: {reason}"}), pid))
+                    self.publish("solver", {"problem_id": pid, "status": "skipped", "error": reason})
+                while not self.queue.empty():
+                    self.queue.get_nowait()
+                return
             pid = await self.queue.get()
             self.current = pid
             try:

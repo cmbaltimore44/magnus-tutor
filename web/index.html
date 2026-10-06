@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-palette="heather">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Magnus Tutor</title>
+    <script>
+      // Apply the theme before first paint (no flash).
+      (function () {
+        try {
+          var p = localStorage.getItem('tutor.palette') || 'heather';
+          var m = localStorage.getItem('tutor.mode') || 'auto';
+          var dark = m === 'dark' || (m === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.palette = p;
+          if (dark) document.documentElement.dataset.mode = 'dark';
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

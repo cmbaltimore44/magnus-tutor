@@ -211,13 +211,13 @@ async def run_problem(mm: ModelManager, solver: SolverService, model: str, role:
     return rec
 
 
-async def bench_run(models: list[str], roles: list[str], limit: int | None, budget: int) -> Path:
+async def bench_run(models: list[str], roles: list[str], limit: int | None, budget: int, ids: list[str] | None = None, cooldown: float = 0) -> Path:
     p = paths()
     s = load_settings(p)
     runtime.ensure_ollama(s, p)
     mm = ModelManager(s)
     solver = SolverService(p, None, mm, lambda: s)
-    problems = load_problems()[: limit or None]
+    problems = [x for x in load_problems() if not ids or x["id"] in ids][: limit or None]
     out = RESULTS / f"run-{time.strftime('%Y%m%d-%H%M%S')}.json"
     RESULTS.mkdir(parents=True, exist_ok=True)
     records = []
@@ -229,6 +229,8 @@ async def bench_run(models: list[str], roles: list[str], limit: int | None, budg
                 mark = "✓" if rec["correct"] else "✗"
                 print(f"{mark} {model:<18} {role:<7} {pr['id']:<18} {rec['elapsed_s']:>6.1f}s {rec.get('answer') or rec.get('detail') or rec.get('error') or ''}"[:160], flush=True)
                 out.write_text(json.dumps({"models": models, "roles": roles, "budget": budget, "records": records}, indent=1, default=str))
+                if cooldown:
+                    await asyncio.sleep(cooldown)  # let the machine cool between problems
         await mm.ollama.unload_all()
     write_report()
     return out
@@ -409,11 +411,30 @@ def _machine() -> str:
     return f"{hw.chip}, {hw.ram_gb} GB"
 
 
+def regrade() -> int:
+    """Re-score stored answers with the current grader (after a grading fix)."""
+    probs = {x["id"]: x for x in load_problems()}
+    changed = 0
+    for f in sorted(RESULTS.glob("run-*.json")):
+        data = json.loads(f.read_text())
+        for r in data["records"]:
+            pr = probs.get(r["id"])
+            if not pr or pr["grader"] not in ("numeric", "symbolic", "set") or "answer" not in r:
+                continue
+            ok = grade_answer(pr, {"final_answer": r.get("answer") or "", "final_answer_sympy": r.get("answer_sympy") or ""})
+            if ok != r["correct"]:
+                changed += 1
+                r["correct"] = ok
+        f.write_text(json.dumps(data, indent=1, default=str))
+    write_report()
+    return changed
+
+
 def run(a) -> int:
     s = load_settings()
     models = a.models or [s["models"]["tutor"]]
     if a.action == "run":
-        out = asyncio.run(bench_run(models, a.roles or ["tutor", "solver"], a.limit, s["solver"]["thinking_budget"]))
+        out = asyncio.run(bench_run(models, a.roles or ["tutor", "solver"], a.limit, s["solver"]["thinking_budget"], a.ids, a.cooldown))
     elif a.action == "latency":
         out = asyncio.run(bench_latency(models))
     elif a.action == "concurrency":
@@ -422,6 +443,9 @@ def run(a) -> int:
         from .retrieval_eval import run_eval
 
         out = asyncio.run(run_eval())
+    elif a.action == "regrade":
+        print(f"re-graded: {regrade()} records changed")
+        out = RESULTS / "REPORT.md"
     else:
         out = write_report()
     print(f"\nwrote {out}")

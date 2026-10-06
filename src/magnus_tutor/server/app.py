@@ -110,6 +110,8 @@ def _mount_web(app: FastAPI) -> None:
 
     @app.get("/{path:path}")
     async def spa(path: str):
+        if path.startswith("api/"):
+            return JSONResponse({"detail": "not found"}, status_code=404)
         f = WEB_DIST / path
         if path and f.is_file() and WEB_DIST in f.resolve().parents:
             return FileResponse(f)

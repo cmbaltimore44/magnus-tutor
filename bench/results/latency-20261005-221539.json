@@ -1,0 +1,80 @@
+[
+ {
+  "model": "qwen3.5:9b",
+  "resident_gb": 5.89,
+  "cold_total_s": 14.921,
+  "cold_load_s": 1.288,
+  "warm_ttft_s": 0.08,
+  "warm_tokens_per_s": 20.8,
+  "warm_total_s": 13.0,
+  "reply_tokens": 269,
+  "available_before_gb": 9.4,
+  "available_after_gb": 3.7,
+  "swap_used_gb": 2.65
+ },
+ {
+  "model": "gemma4:12b",
+  "resident_gb": 0.83,
+  "cold_total_s": 17.294,
+  "cold_load_s": 5.603,
+  "warm_ttft_s": 0.19,
+  "warm_tokens_per_s": 21.7,
+  "warm_total_s": 10.1,
+  "reply_tokens": 215,
+  "available_before_gb": 9.1,
+  "available_after_gb": 3.0,
+  "swap_used_gb": 3.09
+ },
+ {
+  "model": "qwen3:14b",
+  "resident_gb": 9.43,
+  "cold_total_s": 23.783,
+  "cold_load_s": 4.04,
+  "warm_ttft_s": 0.09,
+  "warm_tokens_per_s": 12.6,
+  "warm_total_s": 19.7,
+  "reply_tokens": 248,
+  "available_before_gb": 9.7,
+  "available_after_gb": 2.5,
+  "swap_used_gb": 3.75
+ },
+ {
+  "model": "deepseek-r1:14b",
+  "resident_gb": 9.28,
+  "cold_total_s": 47.539,
+  "cold_load_s": 4.046,
+  "warm_ttft_s": 0.25,
+  "warm_tokens_per_s": 13.0,
+  "warm_total_s": 46.7,
+  "reply_tokens": 604,
+  "available_before_gb": 11.1,
+  "available_after_gb": 3.3,
+  "swap_used_gb": 3.72
+ },
+ {
+  "model": "qwen3.5:4b",
+  "resident_gb": 3.06,
+  "cold_total_s": 8.73,
+  "cold_load_s": 2.044,
+  "warm_ttft_s": 0.05,
+  "warm_tokens_per_s": 36.8,
+  "warm_total_s": 6.7,
+  "reply_tokens": 245,
+  "available_before_gb": 11.6,
+  "available_after_gb": 6.0,
+  "swap_used_gb": 3.71
+ },
+ {
+  "model": "qwen2.5-coder:7b",
+  "resident_gb": 4.58,
+  "cold_total_s": 7.653,
+  "cold_load_s": 2.035,
+  "warm_ttft_s": 0.05,
+  "warm_tokens_per_s": 25.8,
+  "warm_total_s": 3.9,
+  "reply_tokens": 100,
+  "available_before_gb": 7.9,
+  "available_after_gb": 5.7,
+  "swap_used_gb": 3.71
+ }
+]

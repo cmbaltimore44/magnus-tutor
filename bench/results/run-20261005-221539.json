@@ -1,0 +1,605 @@
+{
+ "models": [
+  "qwen3.5:9b",
+  "gemma4:12b",
+  "qwen3:14b",
+  "deepseek-r1:14b",
+  "qwen3.5:4b",
+  "qwen2.5-coder:7b"
+ ],
+ "roles": [
+  "tutor"
+ ],
+ "budget": 2500,
+ "records": [
+  {
+   "id": "em-point-charge",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "1350000",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 55.085,
+    "ttft_s": 3.231,
+    "load_s": 2.787,
+    "prompt_tokens": 166,
+    "eval_tokens": 1088,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 55.26
+  },
+  {
+   "id": "em-line-charge",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "E = \\frac{\\lambda}{2\\pi\\epsilon_0 r}",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 33.201,
+    "ttft_s": 0.473,
+    "load_s": 0.002,
+    "prompt_tokens": 164,
+    "eval_tokens": 679,
+    "tokens_per_s": 20.7
+   },
+   "elapsed_s": 33.43
+  },
+  {
+   "id": "em-capacitor",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "88.4 pF",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 29.109,
+    "ttft_s": 0.449,
+    "load_s": 0.001,
+    "prompt_tokens": 160,
+    "eval_tokens": 593,
+    "tokens_per_s": 20.7
+   },
+   "elapsed_s": 29.11
+  },
+  {
+   "id": "em-potential",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "9000 V",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 47.166,
+    "ttft_s": 0.453,
+    "load_s": 0.001,
+    "prompt_tokens": 157,
+    "eval_tokens": 965,
+    "tokens_per_s": 20.7
+   },
+   "elapsed_s": 47.17
+  },
+  {
+   "id": "em-solid-sphere",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "\\frac{Qr}{4\\pi\\varepsilon_0 R^3}",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 34.291,
+    "ttft_s": 0.458,
+    "load_s": 0.001,
+    "prompt_tokens": 170,
+    "eval_tokens": 705,
+    "tokens_per_s": 20.8
+   },
+   "elapsed_s": 34.31
+  },
+  {
+   "id": "em-wire-field",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "4.0e-05 T",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 23.55,
+    "ttft_s": 0.445,
+    "load_s": 0.001,
+    "prompt_tokens": 157,
+    "eval_tokens": 469,
+    "tokens_per_s": 20.3
+   },
+   "elapsed_s": 23.55
+  },
+  {
+   "id": "em-solenoid",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "7.54e-3 T",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 30.612,
+    "ttft_s": 0.461,
+    "load_s": 0.001,
+    "prompt_tokens": 160,
+    "eval_tokens": 618,
+    "tokens_per_s": 20.5
+   },
+   "elapsed_s": 30.62
+  },
+  {
+   "id": "em-faraday",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "5.0 V",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 51.266,
+    "ttft_s": 0.476,
+    "load_s": 0.002,
+    "prompt_tokens": 177,
+    "eval_tokens": 1062,
+    "tokens_per_s": 20.9
+   },
+   "elapsed_s": 51.27
+  },
+  {
+   "id": "em-cap-energy",
+   "course": "em",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "7.2e-4 J",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 24.954,
+    "ttft_s": 0.444,
+    "load_s": 0.002,
+    "prompt_tokens": 147,
+    "eval_tokens": 506,
+    "tokens_per_s": 20.6
+   },
+   "elapsed_s": 24.96
+  },
+  {
+   "id": "qm-well-ground",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "\\frac{\\pi^2 \\hbar^2}{2mL^2}",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 29.268,
+    "ttft_s": 0.447,
+    "load_s": 0.002,
+    "prompt_tokens": 157,
+    "eval_tokens": 605,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 29.28
+  },
+  {
+   "id": "qm-electron-well",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "3.79 eV",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 26.595,
+    "ttft_s": 0.45,
+    "load_s": 0.001,
+    "prompt_tokens": 163,
+    "eval_tokens": 546,
+    "tokens_per_s": 20.9
+   },
+   "elapsed_s": 26.6
+  },
+  {
+   "id": "qm-sho",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "(3 + 1/2) * hbar * omega",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 16.684,
+    "ttft_s": 0.458,
+    "load_s": 0.003,
+    "prompt_tokens": 163,
+    "eval_tokens": 338,
+    "tokens_per_s": 20.8
+   },
+   "elapsed_s": 16.69
+  },
+  {
+   "id": "qm-normalize",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "\\frac{1}{\\sqrt{L^3/6}}",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 36.898,
+    "ttft_s": 0.456,
+    "load_s": 0.003,
+    "prompt_tokens": 161,
+    "eval_tokens": 765,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 36.91
+  },
+  {
+   "id": "qm-de-broglie",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "0.123 nm",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 20.781,
+    "ttft_s": 0.451,
+    "load_s": 0.002,
+    "prompt_tokens": 153,
+    "eval_tokens": 429,
+    "tokens_per_s": 21.1
+   },
+   "elapsed_s": 20.79
+  },
+  {
+   "id": "qm-expect-x",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "L/2",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 37.129,
+    "ttft_s": 0.448,
+    "load_s": 0.001,
+    "prompt_tokens": 152,
+    "eval_tokens": 765,
+    "tokens_per_s": 20.9
+   },
+   "elapsed_s": 37.14
+  },
+  {
+   "id": "qm-commutator",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "\\hbar",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 37.503,
+    "ttft_s": 0.507,
+    "load_s": 0.015,
+    "prompt_tokens": 153,
+    "eval_tokens": 762,
+    "tokens_per_s": 20.6
+   },
+   "elapsed_s": 37.52
+  },
+  {
+   "id": "qm-hydrogen",
+   "course": "qm",
+   "kind": "physics",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "1.89 eV",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 25.824,
+    "ttft_s": 0.463,
+    "load_s": 0.003,
+    "prompt_tokens": 169,
+    "eval_tokens": 527,
+    "tokens_per_s": 20.8
+   },
+   "elapsed_s": 25.84
+  },
+  {
+   "id": "math-derivative",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "-e^(-x)(2 - x)",
+   "answer_sympy": null,
+   "correct": false,
+   "stats": {
+    "total_s": 20.222,
+    "ttft_s": 0.465,
+    "load_s": 0.003,
+    "prompt_tokens": 141,
+    "eval_tokens": 415,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 20.23
+  },
+  {
+   "id": "math-integral",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "1/a^2",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 23.226,
+    "ttft_s": 0.435,
+    "load_s": 0.001,
+    "prompt_tokens": 148,
+    "eval_tokens": 478,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 23.23
+  },
+  {
+   "id": "math-eigen",
+   "course": "qm",
+   "kind": "math",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "answer": "3, 1",
+   "answer_sympy": null,
+   "correct": true,
+   "stats": {
+    "total_s": 16.853,
+    "ttft_s": 0.437,
+    "load_s": 0.003,
+    "prompt_tokens": 142,
+    "eval_tokens": 347,
+    "tokens_per_s": 21.1
+   },
+   "elapsed_s": 16.86
+  },
+  {
+   "id": "sml-sum",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "10\n0",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 1.641,
+    "ttft_s": 0.26,
+    "load_s": 0.001,
+    "prompt_tokens": 71,
+    "eval_tokens": 31,
+    "tokens_per_s": 22.4
+   },
+   "elapsed_s": 1.68
+  },
+  {
+   "id": "sml-reverse",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "main.sml:3: error: Pattern expected but fun was found\nmain.sml:3: error: Pattern expected but fun was found\nmain.sml:3: error: Syntax error: fun binding is not an identifier applied to one or more\n   patterns.\nmain.sml:3: error: = expected but fun was found\nmain.sml:3: error: Expression expected but fun was found",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.823,
+    "ttft_s": 0.273,
+    "load_s": 0.001,
+    "prompt_tokens": 80,
+    "eval_tokens": 56,
+    "tokens_per_s": 22.0
+   },
+   "elapsed_s": 2.84
+  },
+  {
+   "id": "sml-fib",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "34\n63245986",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 5.123,
+    "ttft_s": 0.295,
+    "load_s": 0.001,
+    "prompt_tokens": 98,
+    "eval_tokens": 103,
+    "tokens_per_s": 21.3
+   },
+   "elapsed_s": 5.16
+  },
+  {
+   "id": "sml-tree-depth",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "main.sml:4: error: Value or constructor (max) has not been declared\nFound near 1 + max (depth left, depth right)",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.559,
+    "ttft_s": 0.278,
+    "load_s": 0.002,
+    "prompt_tokens": 94,
+    "eval_tokens": 50,
+    "tokens_per_s": 21.9
+   },
+   "elapsed_s": 2.58
+  },
+  {
+   "id": "sml-count-if",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "3\n2",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.671,
+    "ttft_s": 0.258,
+    "load_s": 0.001,
+    "prompt_tokens": 76,
+    "eval_tokens": 53,
+    "tokens_per_s": 22.0
+   },
+   "elapsed_s": 2.69
+  },
+  {
+   "id": "sml-lookup",
+   "course": "psl",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "main.sml:3: error: Expression expected but _ was found",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 2.572,
+    "ttft_s": 0.258,
+    "load_s": 0.001,
+    "prompt_tokens": 76,
+    "eval_tokens": 49,
+    "tokens_per_s": 21.2
+   },
+   "elapsed_s": 2.6
+  },
+  {
+   "id": "py-wordcount",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": false,
+   "detail": "[('hello', 1), ('hello,', 1), ('mapreduce', 1), ('world', 2)]",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 7.751,
+    "ttft_s": 0.27,
+    "load_s": 0.001,
+    "prompt_tokens": 96,
+    "eval_tokens": 160,
+    "tokens_per_s": 21.4
+   },
+   "elapsed_s": 7.79
+  },
+  {
+   "id": "py-duration",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "[5400, 45, 7200, 3723]",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 9.283,
+    "ttft_s": 0.275,
+    "load_s": 0.001,
+    "prompt_tokens": 87,
+    "eval_tokens": 193,
+    "tokens_per_s": 21.4
+   },
+   "elapsed_s": 9.32
+  },
+  {
+   "id": "java-gcd",
+   "course": "cloud",
+   "kind": "code",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "6\n1",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 3.555,
+    "ttft_s": 0.275,
+    "load_s": 0.001,
+    "prompt_tokens": 75,
+    "eval_tokens": 69,
+    "tokens_per_s": 21.0
+   },
+   "elapsed_s": 3.85
+  },
+  {
+   "id": "docker-flask",
+   "course": "cloud",
+   "kind": "config",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 4.092,
+    "ttft_s": 0.269,
+    "load_s": 0.001,
+    "prompt_tokens": 79,
+    "eval_tokens": 82,
+    "tokens_per_s": 21.5
+   },
+   "elapsed_s": 4.22
+  },
+  {
+   "id": "k8s-deployment",
+   "course": "cloud",
+   "kind": "config",
+   "model": "qwen3.5:9b",
+   "role": "tutor",
+   "correct": true,
+   "detail": "",
+   "thinking_chars": 0,
+   "stats": {
+    "total_s": 4.968,
+    "ttft_s": 0.263,
+    "load_s": 0.002,
+    "prompt_tokens": 64,
+    "eval_tokens": 101,
+    "tokens_per_s": 21.5
+   },
+   "elapsed_s": 5.04
+  }
+ ]
+}

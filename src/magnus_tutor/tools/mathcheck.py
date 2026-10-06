@@ -21,6 +21,9 @@ from sympy.parsing.sympy_parser import (
 )
 
 _TRANSFORMS = standard_transformations + (implicit_multiplication_application, convert_xor)
+# Names SymPy would otherwise read as built-ins (Q assumptions, E Euler's number, N(), S, gamma()...).
+# In physics they are variables. I stays the imaginary unit and pi stays pi.
+_LOCALS = {n: sp.Symbol(n) for n in ("Q", "E", "N", "S", "O", "C", "beta", "gamma", "zeta", "Lambda", "lamda", "B", "U", "V", "W", "F", "L", "R", "T")}
 MAX_LEN = 240
 
 _LATEX_CLEAN = [
@@ -45,9 +48,14 @@ def _clean_latex(s: str) -> str:
     return s.strip().strip("$").strip()
 
 
+_ALIASES = {"lambda": "lamda", "eps0": "epsilon_0", "epsilon0": "epsilon_0", "e0": "epsilon_0", "varepsilon_0": "epsilon_0",
+            "epsilon_0": "epsilon_0", "varepsilon": "epsilon", "mu0": "mu_0", "mu_0": "mu_0", "hbar": "hbar"}
+
+
 def _sym_name(name: str) -> str:
-    n = re.sub(r"[{}\\]", "", name).lower()
-    return {"lambda": "lamda", "eps0": "epsilon_0", "epsilon0": "epsilon_0", "e0": "epsilon_0", "varepsilon_0": "epsilon_0"}.get(n, n)
+    """Unify spellings (braces, backslashes, ε₀ aliases) but keep case: R and r differ."""
+    n = re.sub(r"[{}\\]", "", name)
+    return _ALIASES.get(n.lower(), n)
 
 
 @lru_cache(maxsize=2048)
@@ -72,14 +80,15 @@ def to_sympy(text: str):
         plain = s.replace("×", "*").replace("·", "*").replace("−", "-")
         plain = re.sub(r"\blambda\b", "lamda", plain)
         plain = re.sub(r"(\d)\s*[x*]\s*10\s*\^\s*\(?(-?\d+)\)?", r"\1e\2", plain)
-        return parse_expr(plain, transformations=_TRANSFORMS, evaluate=True)
+        return parse_expr(plain, local_dict=dict(_LOCALS), transformations=_TRANSFORMS, evaluate=True)
     except Exception:
         return None
 
 
 def _rename(expr):
     """Unify symbol spellings: epsilon_{0} == epsilon_0 == Epsilon_0."""
-    mapping = {s: (sp.pi if s.name == "pi" else sp.Symbol(_sym_name(s.name), positive=True)) for s in expr.free_symbols}
+    special = {"pi": sp.pi, "i": sp.I}  # a bare i in physics answers is the imaginary unit
+    mapping = {s: special.get(s.name, sp.Symbol(_sym_name(s.name), positive=True)) for s in expr.free_symbols}
     return expr.xreplace(mapping)
 
 
