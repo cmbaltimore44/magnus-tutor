@@ -289,10 +289,18 @@ class Tutor:
         mid = store.add_message(self.db, sid, "assistant", reply, None, meta)
         store.save_state(self.db, sid, state.to_dict())
         if problem:
-            store.update_attempt(
-                self.db, sid, problem["id"], hint_level=level, solved=state.solved, used_full_solution=state.solution_unlocked and not state.solved,
-                concept_tags=(reference or {}).get("key_concepts"),
-            )
+            used = state.solution_unlocked and not state.solved
+            store.update_attempt(self.db, sid, problem["id"], hint_level=level, solved=state.solved, used_full_solution=used,
+                                 concept_tags=(reference or {}).get("key_concepts"))
+            # Mastery moves once per problem, when it's solved or the solution is unlocked.
+            if (state.solved or used) and not state.extra.get("mastery_logged"):
+                from ..quiz import attempt_score, observe
+
+                score = attempt_score(state.hint_level, state.solved, used)
+                if score is not None and reference:
+                    observe(self.db, session["course"], (reference or {}).get("key_concepts") or [], score)
+                    state.extra["mastery_logged"] = True
+                    store.save_state(self.db, sid, state.to_dict())
         yield {"type": "done", "message_id": mid, "stats": stats, "state": state.to_dict(), "leak_retries": retries}
 
     async def _gated_stream(self, role: str, msgs: list[dict], checker: LeakChecker | None, level: int, provider: str) -> AsyncIterator[dict]:

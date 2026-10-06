@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, onEvent, postStream } from '../api';
 import { CodePanel } from '../components/CodePanel';
 import { HintLadder } from '../components/HintLadder';
+import { QuizPanel } from '../components/QuizPanel';
 import { Check, Cloud, Code, Image as ImageIcon, Lock, Pages, Quill, Send, Spark, X } from '../components/Icons';
 import { Markdown } from '../components/Markdown';
 import { Modal } from '../components/Modal';
@@ -202,7 +203,7 @@ export function Workspace({ id }: { id: number }) {
             <input
               className="title-input"
               defaultValue={session.title ?? ''}
-              placeholder={session.mode === 'ask' ? 'Question' : 'Problem set / title'}
+              placeholder={session.mode === 'ask' ? 'Question' : session.mode === 'quiz' ? 'Quiz' : 'Problem set / title'}
               onBlur={(e) => {
                 if (e.target.value !== (session.title ?? '')) api.patch(`/sessions/${id}`, { title: e.target.value }).then((r) => setSession(r.session));
               }}
@@ -237,6 +238,9 @@ export function Workspace({ id }: { id: number }) {
           </div>
         )}
 
+        {session.mode === 'quiz' ? (
+          <QuizPanel sessionId={id} course={course} onSource={(s) => { setActiveSources(s); setFocusSource(0); setTab('sources'); }} />
+        ) : (<>
         <div className="chat" ref={listRef}>
           {!messages.length && !streaming && (
             <div className="empty-chat">
@@ -312,6 +316,7 @@ export function Workspace({ id }: { id: number }) {
           </div>
           {error && <div className="error small">{error}</div>}
         </div>
+        </>)}
       </section>
 
       <aside className="ws-right">

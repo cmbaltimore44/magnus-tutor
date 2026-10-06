@@ -76,6 +76,12 @@ async def review(request: Request, course: str | None = None):
             if key not in seen:
                 seen.add(key)
                 out.append({"course": r["course"], "concept": t, "reason": reason})
+    weak = s.db.all("SELECT course, concept, score FROM mastery WHERE score < 0.55 AND evidence >= 2 AND (? IS NULL OR course = ?) ORDER BY score LIMIT 10", (course, course))
+    for w in weak:
+        key = (w["course"], w["concept"].lower())
+        if key not in seen:
+            seen.add(key)
+            out.append({"course": w["course"], "concept": w["concept"], "reason": f"mastery {int(w['score'] * 100)}%"})
     return out[:20]
 
 
