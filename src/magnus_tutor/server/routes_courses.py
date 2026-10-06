@@ -14,6 +14,13 @@ def st(request: Request):
     return request.app.state.tutor
 
 
+def _validate(d: dict) -> None:
+    try:
+        C.validate_fields(d)
+    except C.CourseFieldError as e:
+        raise HTTPException(400, str(e))
+
+
 def course_json(c: C.Course) -> dict:
     return {"slug": c.slug, "name": c.name, **c.to_yaml(), "is_writing": c.is_writing}
 
@@ -47,8 +54,9 @@ async def get_course(slug: str, request: Request):
 @router.post("/courses")
 async def create_course(request: Request):
     d = await request.json()
-    if not d.get("title"):
+    if not isinstance(d, dict) or not d.get("title"):
         raise HTTPException(400, "title is required")
+    _validate(d)
     allowed = {k: d[k] for k in ("description", "topics", "notation_conventions", "schedule", "grading") if d.get(k)}
     c = C.create_course(
         d["title"], code=d.get("code", ""), short=d.get("short", ""), term=d.get("term", ""), instructor=d.get("instructor", ""),
@@ -66,6 +74,11 @@ async def update_course(slug: str, request: Request):
     if not c:
         raise HTTPException(404, "no such course")
     d = await request.json()
+    if not isinstance(d, dict):
+        raise HTTPException(400, "expected an object of course fields")
+    _validate(d)
+    if "title" in d and not str(d["title"]).strip():
+        raise HTTPException(400, "title is required")
     for k, v in d.items():
         # Folders and prompt-override paths are hand-edited in course.yaml only.
         if k in C.Course.__dataclass_fields__ and k not in ("slug", "folders", "prompt_overrides"):

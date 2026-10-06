@@ -48,6 +48,13 @@ def request_problem(request: Request, port: int) -> str | None:
         hosts |= {"127.0.0.1:5173", "localhost:5173"}
     if request.headers.get("host", "") not in hosts:
         return "unexpected Host header"
+    # Browsers label every request with Sec-Fetch-Site. Another site's <img>, <script> or fetch
+    # says cross-site/same-site; this app's own pages say same-origin (or none when typed in).
+    # Non-browser clients (Magnus, the CLI) don't send it. This also covers side-effect GETs
+    # (search loads a model, page renders write cache files).
+    site = request.headers.get("sec-fetch-site")
+    if request.url.path.startswith("/api/") and site is not None and site.lower() not in ("same-origin", "none"):
+        return "cross-site request refused"
     if request.method in SAFE_METHODS:
         return None
     origin = request.headers.get("origin")
@@ -113,6 +120,13 @@ def create_app(state: AppState | None = None, *, manage_processes: bool = True) 
         for k, v in SECURITY_HEADERS.items():
             response.headers.setdefault(k, v)
         return response
+
+    from ..courses import CourseFieldError
+
+    @app.exception_handler(CourseFieldError)
+    async def bad_course_field(request: Request, exc: CourseFieldError):
+        # create_course validates too (the wizard reaches it directly): bad input is a 400, not a 500.
+        return JSONResponse({"detail": str(exc)}, status_code=400, headers=SECURITY_HEADERS)
 
     from . import routes_core, routes_courses, routes_sessions  # noqa: E402
 

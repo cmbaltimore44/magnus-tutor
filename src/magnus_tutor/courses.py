@@ -161,8 +161,43 @@ def default_folders(slug: str, p: Paths | None = None) -> dict[str, str]:
     return {k: str(root / k / slug) for k in ("notes", "textbooks", "other")}
 
 
+TEXT_FIELDS = ("title", "code", "short", "instructor", "term", "description", "notation_conventions", "schedule", "grading")
+LIST_FIELDS = ("kind", "topics", "languages")
+
+
+class CourseFieldError(ValueError):
+    """A course field has the wrong type or size (the API answers 400)."""
+
+
+def validate_fields(fields: dict) -> dict:
+    """Check user-supplied course fields; return them unchanged or raise CourseFieldError.
+    Unknown keys are ignored by callers, not here."""
+    for k in TEXT_FIELDS:
+        if k in fields and fields[k] is not None:
+            v = fields[k]
+            if not isinstance(v, str):
+                raise CourseFieldError(f"{k} must be text")
+            if len(v) > 2000:
+                raise CourseFieldError(f"{k} is too long (2000 characters max)")
+    for k in LIST_FIELDS:
+        if k in fields and fields[k] is not None:
+            v = fields[k]
+            if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+                raise CourseFieldError(f"{k} must be a list of text items")
+            if len(v) > 50 or any(len(x) > 200 for x in v):
+                raise CourseFieldError(f"{k} is too long (50 items of 200 characters max)")
+            if k == "kind" and not set(v) <= set(KINDS):
+                raise CourseFieldError(f"kind must be from: {', '.join(KINDS)}")
+    if "status" in fields and fields["status"] not in ("active", "archived"):
+        raise CourseFieldError("status must be active or archived")
+    return fields
+
+
 def create_course(title: str, *, code: str = "", short: str = "", term: str = "", instructor: str = "", kind: list[str] | None = None,
                   languages: list[str] | None = None, slug: str | None = None, make_folders: bool = True, p: Paths | None = None, **extra) -> Course:
+    validate_fields({"title": title, "code": code, "short": short, "term": term, "instructor": instructor, "kind": kind, "languages": languages, **extra})
+    if not title or not title.strip():
+        raise CourseFieldError("title is required")
     p = p or paths()
     slug = slug or slugify(short or code or title)
     base, n = slug, 2

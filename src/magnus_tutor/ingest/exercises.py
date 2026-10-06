@@ -80,7 +80,9 @@ def find_exercises(pages: list[PageInfo]) -> list[Exercise]:
 _LOOKUP = [
     re.compile(r"\b(?:ch(?:apter)?\.?\s*)(\d+)\s*[,:;]?\s*(?:problem|exercise|question|prob\.?|ex\.?|#|no\.?)\s*#?\s*(\d+)\b", re.I),
     re.compile(r"\b(?:problem|exercise|question|prob\.?|ex\.?)\s*#?\s*(\d+)\s*(?:in|from|of)\s*ch(?:apter)?\.?\s*(\d+)\b", re.I),
-    re.compile(r"\b(?:problem|exercise|prob\.?|ex\.?)\s*(\d+)\.(\d+)\b", re.I),
+    re.compile(r"\b(?:problem|exercise|prob\.?|ex\.?)\s*[:#]?\s*#?\s*(\d+)\.(\d+)\b", re.I),
+    # "new problem 6.12", "next exercise: 6.12"
+    re.compile(r"^\s*(?:new|next|another)\s+(?:problem|question|exercise)\s*[:#-]?\s*#?\s*(\d+)\.(\d+)\b", re.I),
 ]
 
 

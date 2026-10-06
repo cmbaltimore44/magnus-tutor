@@ -170,11 +170,19 @@ class Tutor:
         elif action == "ask_solution":
             intent = I.Intent("ask_solution")
 
-        # A new problem: the first message of a session, an explicit "new problem", or the button.
-        if problem is None or action == "new_problem" or intent.kind == "new_problem":
+        # Mid-session, a short "Problem 6.12" / "chapter 5 problem 3" that finds a textbook
+        # exercise starts that problem (otherwise the message is handled as usual).
+        mid_lookup = None
+        if (problem is not None and action is None and not images and len(user_text) <= 80
+                and intent.kind not in ("new_problem", "solution_choice", "attempt", "ask_solution")):
+            mid_lookup = await self._lookup_exercise(course, user_text)
+
+        # A new problem: the first message of a session, an explicit "new problem", the button,
+        # or a textbook exercise named mid-session.
+        if problem is None or action == "new_problem" or intent.kind == "new_problem" or mid_lookup:
             problem_text = I._NEW_PROBLEM.sub("", user_text).strip(" :.-") if intent.kind == "new_problem" else user_text
             source = "pasted"
-            looked_up = await self._lookup_exercise(course, user_text)
+            looked_up = mid_lookup or await self._lookup_exercise(course, user_text)
             if looked_up:
                 yield {"type": "status", "message": f"Found {looked_up['label']}"}
                 problem_text = looked_up["text"]

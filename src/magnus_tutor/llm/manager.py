@@ -19,6 +19,12 @@ from .base import ChatChunk, Message, ProviderError
 from .ollama import OllamaProvider
 
 
+def model_key(name: str) -> str:
+    """Ollama names without a tag mean ':latest' ("qwen3.5" == "qwen3.5:latest")."""
+    name = (name or "").strip()
+    return name if ":" in name.rsplit("/", 1)[-1] else f"{name}:latest"
+
+
 class Preempted(Exception):
     """A background stream was cancelled because a tutor turn started."""
 
@@ -76,12 +82,13 @@ class ModelManager:
     async def _prepare(self, model: str) -> None:
         async with self._swap_lock:
             loaded = await self.ollama.loaded()
-            others = [m for m in loaded if m["name"] != model and m["name"] != self.embedding_model]
+            want, emb = model_key(model), model_key(self.embedding_model)
+            others = [m for m in loaded if model_key(m["name"]) not in (want, emb)]
             for m in others:
                 await self.ollama.unload(m["name"])
-            if not any(m["name"] == model for m in loaded):
+            if not any(model_key(m["name"]) == want for m in loaded):
                 info = await self.ollama.list_models()
-                size = next((m["size"] for m in info if m["name"] == model), 0) / 1024**3
+                size = next((m["size"] for m in info if model_key(m["name"]) == want), 0) / 1024**3
                 if size == 0:
                     raise ProviderError(f"model {model} isn't installed. Pull it from Settings → Models (or `tutor models pull {model}`).")
                 pf = memory_preflight(size * 1.2)
