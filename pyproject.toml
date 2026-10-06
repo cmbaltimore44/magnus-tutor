@@ -1,0 +1,40 @@
+[project]
+name = "magnus-tutor"
+version = "0.1.0"
+description = "Local, free, Socratic study tutor that lives alongside Magnus."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "cmbaltimore44" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "httpx>=0.27",
+  "pyyaml>=6.0",
+  "pydantic>=2.8",
+  "psutil>=6.0",
+  "watchfiles>=0.24",
+  "sympy>=1.13",
+  "numpy>=2.0",
+  "scipy>=1.14",
+  "pint>=0.24",
+  "pymupdf>=1.24",
+  "sqlite-vec>=0.1.6",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+tutor = "magnus_tutor.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/magnus_tutor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
