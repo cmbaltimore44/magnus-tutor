@@ -285,3 +285,10 @@ app doesn't need Magnus.
 
 Layout: `src/magnus_tutor/` (engine/, ingest/, llm/, server/, tools/, prompts/defaults/),
 `web/` (React + Vite + TypeScript, KaTeX, CodeMirror), `bench/`, `docs/`, `tests/`.
+
+## License
+
+[GNU AGPL v3.0 or later](LICENSE). PDF reading uses
+[PyMuPDF](https://github.com/pymupdf/PyMuPDF) and `pymupdf4llm`, which are
+themselves AGPL-3.0 (or commercially licensed by Artifex), so the tutor uses the
+same license. Other dependencies are permissive (MIT, BSD, Apache-2.0).

@@ -30,7 +30,7 @@ partial file. `version` goes up by one on every write.
     "pausedAt": null | 1791249600000,   // ms: set while paused
     "pausedMs": 0,                      // total paused time in this phase
     "round": 1,                         // focus rounds finished in this cycle (0..every)
-    "taskId": null | "uuid",            // Life Tracker task, or
+    "taskId": null | "uuid",            // Magnus task (shared with Magnus Web), or
     "label": null | "office hours: E&M PSet 3",  // a label instead of a task
     "title": null | "…",                // display name (task title or label)
     "loggedMs": 0, "segmentAt": null    // focus already logged this round (task switches)
